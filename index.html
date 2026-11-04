@@ -194,7 +194,7 @@ button.pulse { animation: pulse 1.3s cubic-bezier(.16, 1, .3, 1) infinite; }
 @media (prefers-reduced-motion: reduce) { .tap-tip, button.pulse { animation: none; } .wash, .bar i { transition: none; } }
 .gauge-tip { font-size: 15px; text-align: center; transition: color .15s; }
 .gauge-tip.now { color: var(--accent); }
-#gaugeCv { width: 100%; height: 56px; display: block; cursor: pointer; touch-action: manipulation; }
+#gaugeCv { width: 100%; height: 70px; display: block; cursor: pointer; touch-action: manipulation; }
 #angleCv { width: 100%; height: 250px; display: block; cursor: pointer; touch-action: manipulation; margin-top: 8px; }
 .angle summary { font-size: 13px; color: var(--muted); cursor: pointer; width: fit-content; margin-inline: auto; font-style: italic; list-style: none; display: flex; align-items: center; gap: 8px; }
 .angle summary::-webkit-details-marker { display: none; }
@@ -212,7 +212,7 @@ button {
 }
 button:hover:not(:disabled) { background: var(--ink); color: var(--bg); }
 button:active:not(:disabled) { background: var(--muted); }
-button:disabled { color: var(--muted); border-color: var(--line); cursor: not-allowed; }
+button:disabled { color: var(--muted); border-color: var(--line); border-style: dashed; cursor: not-allowed; }
 button.primary { background: var(--ink); color: var(--bg); }
 button.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
 button b { font-family: var(--f-num); font-weight: 400; font-size: 15px; }
@@ -291,6 +291,12 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
   .top { grid-row: 1; }
   .grid > .bench { position: static; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .actions:empty { display: none; }
+  .actions button.primary { min-height: 44px; min-width: min(100%, 240px); font-size: 15px; }
+  .specimen { order: -2; }
+  .caption { order: -1; }
+  .bench.vacant .specimen, .bench.vacant .caption { display: none; }
+  .grid > .bench.vacant { justify-content: center; }
+  .bench.angling .stage-box { margin-bottom: 0; }
   .ticker { font-size: 13px; min-height: 0; padding-top: 6px; cursor: pointer; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   .ticker.open { display: block; }
 
@@ -322,7 +328,9 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
   .meter-row { grid-column: 1 / -1; }
   .meter .num { font-size: 26px; }
   .meter .rate { font-size: 12px; }
-  .goal { grid-row: 2; }
+  .goal { grid-row: 2; flex-wrap: wrap; gap: 3px 10px; }
+  .goal-bar { flex-basis: 100%; }
+  .specimen.empty .callouts { display: none; }
 
   .grid > .bench { grid-row: 2; gap: 6px; padding-block: 4px 8px; }
   .specimen { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 0; }
@@ -504,8 +512,8 @@ const I18N = {
     title: '藏光', tagline: '把原石切成能留住光的形状。从一块萤石开始，一直切到钻石。', light: '光', perSec: '/ 秒',
     soundOn: '音效：开', soundOff: '音效：关', langBtn: 'EN',
     bench: '工作台', benchEmpty: '空着', benchAria: '工作台上的宝石，点击敲击或研磨',
-    tapRock: '点我', tapGrind: '继续点，磨出刻面', crackTip: '裂了！浸油能防裂',
-    gaugeIdle: '指针走到发亮的那一段时，点一下宝石', gaugeNow: '就是现在，点宝石！', gaugeAria: '角度指针。扫到亮区时点击宝石或按空格',
+    tapRock: '点我', tapGrind: '继续点，磨出刻面', tapPlace: '点我放进展柜', crackTip: '裂了！浸油能防裂',
+    gaugeIdle: '等指针走到发亮的那一段，点一下', gaugeNow: '就是现在，点一下！', gaugeAria: '角度指针。扫到亮区时点击宝石或按空格',
     more: '想看光在石头里怎么走？', diagramAria: '光路图',
     rTheta: '亭部角', rCrit: '临界角', rScore: '回光率', rQ: '品质',
     plate: r => `图版 ${r}`, fig: n => `图 ${n}`, unlockName: n => `解锁：${n}`, unlockGo: '去看看', cHard: '硬度', cRI: '折射率', cDisp: '色散', cQ: '品质',
@@ -546,11 +554,11 @@ const I18N = {
     upDustOn: '已备好。钻石按正常速度研磨。', upDustOff: '只有钻石能磨钻石。没有它，钻石每一面要磨 5 倍久。',
     upBtn: '升级 · ', buyBtn: '购买 · ', maxed: '已满 ', owned: '已拥有',
     benchBuy: n => `放一块${n}上工作台 · `,
-    goalLocked: (a, b) => `下一块原石：累计 ${a} / ${b} 光`, goalBuy: (n, a, b) => `攒光买${n}：${a} / ${b}`,
+    goalLocked: a => `再收集 ${a} 光，出现新原石`, goalBuy: (n, a) => `再攒 ${a} 光就能买${n}`, goalReady: n => `${n}买得起了`,
+    eta: t => ` · 约 ${t}`, etaS: n => `${n} 秒`, etaM: n => `${n} 分钟`, etaH: n => `${n} 小时`, upsReady: n => `${n} 项可买`,
     nudge: '光可以花在这里', nudgeOil: '能防祖母绿开裂', workshopSay: '攒下的光可以在「工坊」里花掉。升级以后敲得更快、磨得更快。',
     specs: (h, n, d) => `硬度 ${h} · 折射率 ${n} · 色散 ${d}`, specsQ: q => ` · 品质 ×${q}`,
     hEmpty: '从「原石」里挑一块放上工作台。', hRock: '点宝石，敲掉外面那层石皮。', rockBar: (a, b) => `石皮 ${a} / ${b}`,
-    hAngle: '指针扫到亮的地方时，点一下宝石（或按空格）。',
     hGrind: '点宝石磨刻面。每多一面，每秒多出一点光。', hPolish: '点宝石抛光弧面。抛得越亮，变彩露出来越多。',
     hRate: v => `现在每秒 ${v} 光。`, hCrack: p => ` 每磨一面有 ${p} 几率开裂。`,
     oilBtn: (a, b) => `浸油处理：开裂 ${a} → ${b} · `,
@@ -572,8 +580,8 @@ const I18N = {
     title: 'Stonelight', tagline: 'Cut rough stones into shapes that keep the light. Start with a lump of fluorite and work your way up to diamond.', light: 'Light', perSec: '/ s',
     soundOn: 'Sound: on', soundOff: 'Sound: off', langBtn: '中文',
     bench: 'Workbench', benchEmpty: 'empty', benchAria: 'Gem on the workbench. Click to chip or grind',
-    tapRock: 'Tap me', tapGrind: 'Keep tapping to grind facets', crackTip: 'Cracked! Oil helps',
-    gaugeIdle: 'Tap the gem when the needle reaches the glowing part', gaugeNow: 'Now! Tap the gem!', gaugeAria: 'Angle needle. Tap the gem or press Space when it is in the glow',
+    tapRock: 'Tap me', tapGrind: 'Keep tapping to grind facets', tapPlace: 'Tap to put it in the case', crackTip: 'Cracked! Oil helps',
+    gaugeIdle: 'Wait for the needle to reach the glow, then tap', gaugeNow: 'Now! Tap!', gaugeAria: 'Angle needle. Tap the gem or press Space when it is in the glow',
     more: 'How does light travel inside the stone?', diagramAria: 'Light path',
     rTheta: 'Pavilion angle', rCrit: 'Critical angle', rScore: 'Light kept', rQ: 'Quality',
     plate: r => `Plate ${r}`, fig: n => `Fig. ${n}`, unlockName: n => `Unlocked: ${n}`, unlockGo: 'Show me', cHard: 'Hardness', cRI: 'Refractive index', cDisp: 'Dispersion', cQ: 'Quality',
@@ -614,11 +622,11 @@ const I18N = {
     upDustOn: 'Ready. Diamonds grind at normal speed.', upDustOff: 'Only diamond can cut diamond. Without it, every diamond facet takes 5 times as long.',
     upBtn: 'Upgrade · ', buyBtn: 'Buy · ', maxed: 'Maxed ', owned: 'Owned',
     benchBuy: n => `Put ${n} on the bench · `,
-    goalLocked: (a, b) => `Next rough stone: ${a} / ${b} light gathered`, goalBuy: (n, a, b) => `Save up for ${n}: ${a} / ${b}`,
+    goalLocked: a => `Gather ${a} more light to reveal a new stone`, goalBuy: (n, a) => `${a} more light to afford ${n}`, goalReady: n => `You can afford ${n}`,
+    eta: t => ` · about ${t}`, etaS: n => `${n} s`, etaM: n => `${n} min`, etaH: n => `${n} h`, upsReady: n => `${n} ready`,
     nudge: 'Spend your light here', nudgeOil: 'Stops emerald cracks', workshopSay: 'You can spend light in the Workshop. Upgrades make you chip and grind faster.',
     specs: (h, n, d) => `Hardness ${h} · RI ${n} · Dispersion ${d}`, specsQ: q => ` · Quality ×${q}`,
     hEmpty: 'Pick a stone from Rough stones and put it on the bench.', hRock: 'Tap the stone to chip off the crust.', rockBar: (a, b) => `Crust ${a} / ${b}`,
-    hAngle: 'When the needle sweeps into the glow, tap the gem (or press Space).',
     hGrind: 'Tap the gem to grind facets. Each new facet adds a little light per second.', hPolish: 'Tap the gem to polish the dome. The shinier it gets, the more color shows.',
     hRate: v => ` Right now it makes ${v} light per second.`, hCrack: p => ` Each facet has a ${p} chance to crack.`,
     oilBtn: (a, b) => `Oil treatment: cracks ${a} → ${b} · `,
@@ -1222,7 +1230,7 @@ function renderSide() {
   $('tabUps').hidden = !upsAny;
   if (tab === 'ups' && !upsAny) setTab('shop');
   $('tabCaseN').textContent = `${S.cases.length}/${S.slots}`;
-  $('tabUpsN').textContent = affordable ? String(affordable) : '';
+  $('tabUpsN').textContent = affordable ? tr('upsReady', affordable) : '';
   // one prompt at a time: while the bench is empty its own button is the next step, so the workshop waits its turn
   $('tabShop').classList.remove('cue');
   $('tabUps').classList.toggle('cue', upsCue && busy);
@@ -1239,7 +1247,9 @@ function renderBench() {
     ? tr('specs', G.mohsTxt, G.n.toFixed(3), G.disp.toFixed(3)) + (b.q ? tr('specsQ', b.q.toFixed(2)) : '')
     : '';
   // the plate around the specimen: number, figure caption, callouts and the hand-tint wash
-  $('specimen').classList.toggle('empty', !G);
+  // the measurements wait until the stone is cut open; a lump of rock has nothing to annotate yet
+  $('specimen').classList.toggle('empty', !G || b.stage === 'rock');
+  bench.classList.toggle('vacant', !G);
   $('plateNo').textContent = tr('plate', G ? ['I', 'II', 'III', 'IV', 'V'][['fluorite', 'emerald', 'corundum', 'opal', 'diamond'].indexOf(G.group)] : '—');
   $('benchFig').textContent = G ? tr('fig', Math.min(S.cases.length + 1, S.slots)) : '';
   if (G) {
@@ -1251,13 +1261,15 @@ function renderBench() {
   // pin it by the bottom edge instead whenever it does not fit
   bench.style.top = Math.min(16, innerHeight - bench.offsetHeight - 16) + 'px';
   bench.classList.toggle('angling', !!b && b.stage === 'angle');
-  benchCv.classList.toggle('idle', !b || b.stage === 'done');
+  benchCv.classList.toggle('idle', !b);
   const cracking = b && performance.now() < crackUntil;
   $('tapTip').classList.toggle('warn', !!cracking);
   if (cracking) { $('tapTip').hidden = false; $('tapTip').textContent = tr('crackTip'); }
   const showTap = !cracking && b && !S.tut.placed && ((b.stage === 'rock' && S.tut.taps < 3) || (b.stage === 'facet' && S.tut.grinds < 4));
-  if (!cracking) $('tapTip').hidden = !showTap;
-  if (showTap) $('tapTip').textContent = tr(b.stage === 'rock' ? 'tapRock' : 'tapGrind');
+  // a finished gem keeps its tag: the player has been tapping the stone all along, so tapping it again puts it away
+  const showPlace = !cracking && b && b.stage === 'done' && S.cases.length < S.slots;
+  if (!cracking) $('tapTip').hidden = !(showTap || showPlace);
+  if (showTap || showPlace) $('tapTip').textContent = tr(showPlace ? 'tapPlace' : b.stage === 'rock' ? 'tapRock' : 'tapGrind');
   $('anglePanel').hidden = !b || b.stage !== 'angle';
   const bar = $('barWrap'), fill = $('barFill'), txt = $('barText'), hint = $('hint');
   bar.hidden = !b || b.stage === 'angle';
@@ -1271,7 +1283,7 @@ function renderBench() {
     fill.style.width = (100 * (1 - b.hp / b.hpMax)) + '%';
     txt.textContent = tr('rockBar', Math.max(0, Math.ceil(b.hp)), Math.ceil(b.hpMax));
   } else if (b.stage === 'angle') {
-    hint.textContent = tr('hAngle');
+    hint.textContent = '';
     txt.textContent = '';
   } else if (b.stage === 'facet') {
     const need = facetNeed(b);
@@ -1367,7 +1379,7 @@ function drawGauge(G, theta) {
   if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
   const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
   const cs = getComputedStyle(document.documentElement), ink = cs.getPropertyValue('--ink').trim(), muted = cs.getPropertyValue('--muted').trim();
-  const x0 = 14, x1 = w - 14, base = 30, GX = a => x0 + (a - A_MIN) / (A_MAX - A_MIN) * (x1 - x0);
+  const x0 = 14, x1 = w - 14, base = 44, GX = a => x0 + (a - A_MIN) / (A_MAX - A_MIN) * (x1 - x0);
   // hand-tint wash over the angles that keep light
   c.fillStyle = G.ui;
   const z = zoneOf(G);
@@ -1389,7 +1401,7 @@ function drawGauge(G, theta) {
   while (lo > 0 && z[lo - 1] > 0.6) lo--;
   while (hi < z.length - 1 && z[hi + 1] > 0.6) hi++;
   c.fillStyle = ink; c.font = '12px ' + cs.getPropertyValue('--f-body');
-  c.fillText(tr('cvGood'), Math.min(x1 - 24, Math.max(x0 + 24, GX(A_MIN + (lo + hi + 1) * 0.125))), base - 16);
+  c.fillText(tr('cvGood'), Math.min(x1 - 24, Math.max(x0 + 24, GX(A_MIN + (lo + hi + 1) * 0.125))), base - 30);
   // the needle: a fine engraved line with a small head
   const x = GX(theta);
   c.strokeStyle = ink; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, base - 14); c.lineTo(x, base + 8); c.stroke();
@@ -1608,6 +1620,8 @@ function hitBench() {
   } else if (b.stage === 'angle') {
     lockAngle();
     return;
+  } else if (b.stage === 'done') {
+    place(); return;
   } else if (b.stage === 'facet') {
     grindSfx();
     addGrind(grindClick()); spawn('spark', 3); S.tut.grinds++;
@@ -1742,8 +1756,11 @@ function renderTop() {
   $('rate').textContent = $('rhRate').textContent = `+${fmt(totalRate())} ${tr('perSec')}`;
   // always one thing to work toward: the next stone to appear, then the next stone to afford
   const lock = SHOP.find(s => !isUnlocked(s)), want = !lock && SHOP.find(s => !S.bought[s.k]);
-  const g = lock ? [tr('goalLocked', fmt(S.total), fmt(lock.price * 0.25)), S.total / (lock.price * 0.25)]
-    : want ? [tr('goalBuy', L().shop[want.k].title, fmt(S.light), fmt(priceOf(want.k))), S.light / priceOf(want.k)] : null;
+  const eta = left => { const r = totalRate(); if (r <= 0) return ''; const t = left / r;
+    return tr('eta', t < 60 ? tr('etaS', Math.ceil(t)) : t < 3600 ? tr('etaM', Math.ceil(t / 60)) : tr('etaH', (t / 3600).toFixed(1))); };
+  const need = lock ? lock.price * 0.25 : want ? priceOf(want.k) : 0, have = lock ? S.total : S.light, left = need - have;
+  const g = lock ? [tr('goalLocked', fmt(left)) + eta(left), have / need]
+    : want ? [left > 0 ? tr('goalBuy', L().shop[want.k].title, fmt(left)) + eta(left) : tr('goalReady', L().shop[want.k].title), have / need] : null;
   $('goal').hidden = !g;
   if (g) { $('goalText').textContent = g[0]; $('goalFill').style.width = Math.min(100, g[1] * 100).toFixed(1) + '%'; }
 }
