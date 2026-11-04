@@ -359,13 +359,15 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
   .row-title::before { content: ""; align-self: center; border-left: 5px solid var(--muted); border-block: 4px solid transparent; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
   .row.open .row-title::before { transform: rotate(90deg); }
   .row.locked .row-title::before { visibility: hidden; }
-  .row:not(.open):not(.locked) .row-desc { display: none; }
+  .row:not(.open):not(.locked) .row-desc { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 1; overflow: hidden; }
+  #shop .row-title .sub { display: none; }
+  #shop .row.open .row-title .sub { display: inline; }
   .case-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
   .slot { min-height: 150px; }
 }
 @media (min-height: 560px) and (max-width: 860px) and (max-height: 680px) {
   .caption > div:not(.gname) { display: none; }
-  .stage-box { margin-block: -10px -18px; }
+  .stage-box { margin-block: -8px -4px; }
   .plate-in { grid-template-rows: auto minmax(0, auto) auto minmax(130px, 1fr); }
 }
 /* wide: the specimen keeps its leader-line callouts on the left; the tabs and their list fill the right column */
@@ -512,7 +514,7 @@ const I18N = {
     title: '藏光', tagline: '把原石切成能留住光的形状。从一块萤石开始，一直切到钻石。', light: '光', perSec: '/ 秒',
     soundOn: '音效：开', soundOff: '音效：关', langBtn: 'EN',
     bench: '工作台', benchEmpty: '空着', benchAria: '工作台上的宝石，点击敲击或研磨',
-    tapRock: '点我', tapGrind: '继续点，磨出刻面', tapPlace: '点我放进展柜', crackTip: '裂了！浸油能防裂',
+    tapRock: '点我', tapGrind: '继续点，磨出刻面', crackTip: '裂了！浸油能防裂',
     gaugeIdle: '等指针走到发亮的那一段，点一下', gaugeNow: '就是现在，点一下！', gaugeAria: '角度指针。扫到亮区时点击宝石或按空格',
     more: '想看光在石头里怎么走？', diagramAria: '光路图',
     rTheta: '亭部角', rCrit: '临界角', rScore: '回光率', rQ: '品质',
@@ -533,7 +535,7 @@ const I18N = {
     shop: {
       fluorite: { title: '萤石原石', sub: 'CaF₂ · 硬度 4', desc: '8 个刻面。软，好切，拿来练手。', buy: ['买一块'] },
       emerald: { title: '祖母绿原石', sub: 'Be₃Al₂Si₆O₁₈ · 硬度 7.5–8', desc: '25 个刻面，阶梯式切工。几乎每颗都有内含物，磨的时候可能开裂。', buy: ['买一块'] },
-      corundum: { title: '刚玉原石', sub: 'Al₂O₃ · 硬度 9', desc: '33 个刻面。同一种矿物，杂质决定颜色。红宝石：强光下发红色荧光，出光 ×1.3。蓝宝石：每颗让整个展柜出光 +8%。', buy: ['掺铬 → 红宝石', '掺铁钛 → 蓝宝石'] },
+      corundum: { title: '刚玉原石', sub: 'Al₂O₃ · 硬度 9', desc: '33 个刻面。同一种矿物，杂质决定颜色。红宝石：强光下发红色荧光，出光 ×1.3。蓝宝石：每颗让整个展柜出光 +8%。', buy: ['红宝石', '蓝宝石'] },
       opal: { title: '欧泊原石', sub: 'SiO₂ · nH₂O · 硬度 5.5–6.5', desc: '不切刻面，只抛成弧面。敲开之前不知道是什么：可能是没有变彩的普通欧泊，也可能是黑欧泊。', buy: ['赌一块'] },
       diamond: { title: '钻石原石', sub: 'C · 硬度 10', desc: '57 个刻面，标准圆形明亮式。临界角只有 24.4°，光进去就很难漏出来。', buy: ['买一块'] },
     },
@@ -553,12 +555,12 @@ const I18N = {
     upLamp: m => `展柜里的宝石出光 ×1.3（当前 ×${m}）`, upOil: p => `祖母绿每磨一面的开裂几率：${p}%`,
     upDustOn: '已备好。钻石按正常速度研磨。', upDustOff: '只有钻石能磨钻石。没有它，钻石每一面要磨 5 倍久。',
     upBtn: '升级 · ', buyBtn: '购买 · ', maxed: '已满 ', owned: '已拥有',
-    benchBuy: n => `放一块${n}上工作台 · `,
+    benchBuy: n => `买一块${n}放上工作台 · `, busyBtn: '台上还有石头 · ', tapAngle: '指针到亮处时点我',
     goalLocked: a => `再收集 ${a} 光，出现新原石`, goalBuy: (n, a) => `再攒 ${a} 光就能买${n}`, goalReady: n => `${n}买得起了`,
     eta: t => ` · 约 ${t}`, etaS: n => `${n} 秒`, etaM: n => `${n} 分钟`, etaH: n => `${n} 小时`, upsReady: n => `${n} 项可买`,
     nudge: '光可以花在这里', nudgeOil: '能防祖母绿开裂', workshopSay: '攒下的光可以在「工坊」里花掉。升级以后敲得更快、磨得更快。',
     specs: (h, n, d) => `硬度 ${h} · 折射率 ${n} · 色散 ${d}`, specsQ: q => ` · 品质 ×${q}`,
-    hEmpty: '从「原石」里挑一块放上工作台。', hRock: '点宝石，敲掉外面那层石皮。', rockBar: (a, b) => `石皮 ${a} / ${b}`,
+    hEmpty: '从「原石」里挑一块放上工作台。', hRock: '点石头，敲掉外面那层石皮。', rockBar: (a, b) => `石皮 ${a} / ${b}`,
     hGrind: '点宝石磨刻面。每多一面，每秒多出一点光。', hPolish: '点宝石抛光弧面。抛得越亮，变彩露出来越多。',
     hRate: v => `现在每秒 ${v} 光。`, hCrack: p => ` 每磨一面有 ${p} 几率开裂。`,
     oilBtn: (a, b) => `浸油处理：开裂 ${a} → ${b} · `,
@@ -574,13 +576,13 @@ const I18N = {
     retired: n => `${n}从展柜里撤下来了。`, sold: v => `卖给了收藏家，换来 ${v} 光。`,
     crackMsg: '磨到内含物，裂了，这一面白磨了。点工作台下方的「浸油处理」能降低开裂几率。', crackMsgMax: '磨到内含物，裂了，这一面白磨了。',
     restart: '从一块萤石重新开始。',
-    welcome: '工作台上有一块萤石原石。点它敲掉石皮。切好的宝石会发光，光就是这里的钱。',
+    welcome: '切好的宝石会发光，光就是这里的钱。',
   },
   en: {
     title: 'Stonelight', tagline: 'Cut rough stones into shapes that keep the light. Start with a lump of fluorite and work your way up to diamond.', light: 'Light', perSec: '/ s',
     soundOn: 'Sound: on', soundOff: 'Sound: off', langBtn: '中文',
     bench: 'Workbench', benchEmpty: 'empty', benchAria: 'Gem on the workbench. Click to chip or grind',
-    tapRock: 'Tap me', tapGrind: 'Keep tapping to grind facets', tapPlace: 'Tap to put it in the case', crackTip: 'Cracked! Oil helps',
+    tapRock: 'Tap me', tapGrind: 'Keep tapping to grind facets', crackTip: 'Cracked! Oil helps',
     gaugeIdle: 'Wait for the needle to reach the glow, then tap', gaugeNow: 'Now! Tap!', gaugeAria: 'Angle needle. Tap the gem or press Space when it is in the glow',
     more: 'How does light travel inside the stone?', diagramAria: 'Light path',
     rTheta: 'Pavilion angle', rCrit: 'Critical angle', rScore: 'Light kept', rQ: 'Quality',
@@ -601,7 +603,7 @@ const I18N = {
     shop: {
       fluorite: { title: 'Fluorite rough', sub: 'CaF₂ · hardness 4', desc: '8 facets. Soft and easy to cut. Good for practice.', buy: ['Buy one'] },
       emerald: { title: 'Emerald rough', sub: 'Be₃Al₂Si₆O₁₈ · hardness 7.5–8', desc: '25 facets in a step cut. Almost every emerald has inclusions, so it may crack while you grind.', buy: ['Buy one'] },
-      corundum: { title: 'Corundum rough', sub: 'Al₂O₃ · hardness 9', desc: '33 facets. One mineral; the impurity decides the color. Ruby glows red under strong light, light ×1.3. Each sapphire adds +8% to the whole case.', buy: ['Add chromium → ruby', 'Add iron + titanium → sapphire'] },
+      corundum: { title: 'Corundum rough', sub: 'Al₂O₃ · hardness 9', desc: '33 facets. One mineral; the impurity decides the color. Ruby glows red under strong light, light ×1.3. Each sapphire adds +8% to the whole case.', buy: ['Ruby', 'Sapphire'] },
       opal: { title: 'Opal rough', sub: 'SiO₂ · nH₂O · hardness 5.5–6.5', desc: 'No facets, just a polished dome. You will not know what you have until it cracks open: plain common opal, or a black opal.', buy: ['Take a gamble'] },
       diamond: { title: 'Diamond rough', sub: 'C · hardness 10', desc: '57 facets in a round brilliant cut. Its critical angle is only 24.4°, so light that gets in has a hard time leaking out.', buy: ['Buy one'] },
     },
@@ -621,7 +623,7 @@ const I18N = {
     upLamp: m => `Gems in the case shine ×1.3 (now ×${m})`, upOil: p => `Chance an emerald cracks per facet: ${p}%`,
     upDustOn: 'Ready. Diamonds grind at normal speed.', upDustOff: 'Only diamond can cut diamond. Without it, every diamond facet takes 5 times as long.',
     upBtn: 'Upgrade · ', buyBtn: 'Buy · ', maxed: 'Maxed ', owned: 'Owned',
-    benchBuy: n => `Put ${n} on the bench · `,
+    benchBuy: n => `Buy ${n} for the bench · `, busyBtn: 'Bench is busy · ', tapAngle: 'Tap me when the needle glows',
     goalLocked: a => `Gather ${a} more light to reveal a new stone`, goalBuy: (n, a) => `${a} more light to afford ${n}`, goalReady: n => `You can afford ${n}`,
     eta: t => ` · about ${t}`, etaS: n => `${n} s`, etaM: n => `${n} min`, etaH: n => `${n} h`, upsReady: n => `${n} ready`,
     nudge: 'Spend your light here', nudgeOil: 'Stops emerald cracks', workshopSay: 'You can spend light in the Workshop. Upgrades make you chip and grind faster.',
@@ -642,7 +644,7 @@ const I18N = {
     retired: n => `The ${n} came out of the case.`, sold: v => `Sold to a collector for ${v} light.`,
     crackMsg: 'Hit an inclusion and it cracked. That facet is lost. Tap "Oil treatment" under the bench to lower the odds.', crackMsgMax: 'Hit an inclusion and it cracked. That facet is lost.',
     restart: 'Starting over with a lump of fluorite.',
-    welcome: 'There is a fluorite rough on the bench. Tap it to chip off the crust. Finished gems glow, and light is the money here.',
+    welcome: 'Finished gems glow, and light is the money here.',
   },
 };
 let LANG = 'zh';
@@ -1197,8 +1199,9 @@ function renderSide() {
     row.querySelector('.sub').textContent = unlocked ? L().shop[s.k].sub : '';
     row.querySelector('.row-desc').textContent = unlocked ? L().shop[s.k].desc : tr('locked', fmt(s.price * 0.25));
     const p = priceOf(s.k);
-    row.querySelectorAll('button').forEach(b => {
+    row.querySelectorAll('button').forEach((b, i) => {
       b.hidden = !unlocked;
+      b.firstChild.textContent = busy ? tr('busyBtn') : L().shop[s.k].buy[i] + ' · ';
       b.querySelector('b').textContent = p === 0 ? tr('free') : fmt(p);
       b.disabled = busy || S.light < p;
     });
@@ -1206,6 +1209,10 @@ function renderSide() {
 
   let upsCue = false, affordable = 0;
   const afford = [];
+  // the workshop's turn: a stone is being chipped or ground, or the bench is empty and no stone is affordable yet.
+  // A finished gem, the angle step, an offer on the bench or the oil button under a cracking emerald come first
+  const offer = busy ? null : bestOffer();
+  const upsTurn = busy ? S.bench.stage !== 'done' && S.bench.stage !== 'angle' && !document.querySelector('#oilBtn.pulse') : !(offer && offer.ok);
   const nudgeKey = S.tut.placed && !S.tut.upgraded
     ? (UPS.find(u => (u.show() || upLevel(u.k) > 0) && upLevel(u.k) < u.max && S.light >= u.cost(upLevel(u.k))) || {}).k : null;
   if (nudgeKey && !S.tut.said) { S.tut.said = 1; say(tr('workshopSay')); }
@@ -1218,7 +1225,7 @@ function renderSide() {
     // classList.toggle treats an undefined force as 'flip', so the flag must be a real boolean
     const oilNudge = !!(u.k === 'oil' && S.tut.cracked && !S.up.oil);
     row.classList.toggle('nudge', u.k === nudgeKey || oilNudge);
-    row.querySelector('button').classList.toggle('pulse', u.k === nudgeKey || oilNudge);
+    row.querySelector('button').classList.toggle('pulse', (u.k === nudgeKey || oilNudge) && upsTurn);
     row.querySelector('.nudge-note').textContent = tr(oilNudge ? 'nudgeOil' : 'nudge');
     row.querySelector('.sub').textContent = u.max === 1 ? (l ? tr('owned') : '') : `Lv ${l}`;
     row.querySelector('.row-desc').textContent = u.desc(l);
@@ -1227,7 +1234,7 @@ function renderSide() {
     b.firstChild.textContent = tr(maxed ? 'maxed' : u.max === 1 ? 'buyBtn' : 'upBtn');
     b.querySelector('b').textContent = maxed ? '' : fmt(c);
     if (row.classList.contains('nudge')) upsCue = true;
-    if (!b.disabled) { affordable++; afford.push([u.k, c]); if (u.k === upsPick) b.classList.add('pulse'); }
+    if (!b.disabled) { affordable++; afford.push([u.k, c]); if (u.k === upsPick && upsTurn) b.classList.add('pulse'); }
   }
   const upsAny = UPS.some(u => !$('ups').querySelector(`[data-k="${u.k}"]`).hidden);
   $('tabUps').hidden = !upsAny;
@@ -1244,12 +1251,8 @@ function renderSide() {
     }
     afford.forEach(([k]) => upsSeen.set(k, now));
   } else upsPick = null;
-  // the workshop only calls while a stone is being worked; a finished gem or an empty bench has its own next step
-  if (fresh.length && tab !== 'ups' && S.bench && S.bench.stage !== 'done') upsCue = true;
-  // one prompt at a time: while the bench is empty its own button is the next step, so the workshop waits its turn
-  $('tabShop').classList.remove('cue');
-  // the oil button under a cracking emerald already points at the same upgrade
-  $('tabUps').classList.toggle('cue', upsCue && busy && S.bench.stage !== 'done' && !document.querySelector('#oilBtn.pulse'));
+  if (fresh.length && tab !== 'ups') upsCue = true;
+  $('tabUps').classList.toggle('cue', upsCue && upsTurn);
 }
 
 function renderBench() {
@@ -1282,10 +1285,10 @@ function renderBench() {
   $('tapTip').classList.toggle('warn', !!cracking);
   if (cracking) { $('tapTip').hidden = false; $('tapTip').textContent = tr('crackTip'); }
   const showTap = !cracking && b && !S.tut.placed && ((b.stage === 'rock' && S.tut.taps < 3) || (b.stage === 'facet' && S.tut.grinds < 4));
-  // a finished gem keeps its tag: the player has been tapping the stone all along, so tapping it again puts it away
-  const showPlace = !cracking && b && b.stage === 'done' && S.cases.length < S.slots;
-  if (!cracking) $('tapTip').hidden = !(showTap || showPlace);
-  if (showTap || showPlace) $('tapTip').textContent = tr(showPlace ? 'tapPlace' : b.stage === 'rock' ? 'tapRock' : 'tapGrind');
+  // the angle step changes what a tap means, so the stone says when to tap; a finished gem can still be tapped to put it away
+  const showAngle = !cracking && b && b.stage === 'angle';
+  if (!cracking) $('tapTip').hidden = !(showTap || showAngle);
+  if (showTap || showAngle) $('tapTip').textContent = tr(showAngle ? 'tapAngle' : b.stage === 'rock' ? 'tapRock' : 'tapGrind');
   $('anglePanel').hidden = !b || b.stage !== 'angle';
   const bar = $('barWrap'), fill = $('barFill'), txt = $('barText'), hint = $('hint');
   bar.hidden = !b || b.stage === 'angle';
@@ -1772,7 +1775,9 @@ function renderTop() {
   }
   $('rate').textContent = $('rhRate').textContent = `+${fmt(totalRate())} ${tr('perSec')}`;
   // always one thing to work toward: the next stone to appear, then the next stone to afford
-  const lock = SHOP.find(s => !isUnlocked(s)), want = !lock && SHOP.find(s => !S.bought[s.k]);
+  const rate = totalRate(), soon = rate > 0 && SHOP.filter(s => isUnlocked(s) && S.light < priceOf(s.k) && (priceOf(s.k) - S.light) / rate <= 60)
+    .sort((a, b) => priceOf(a.k) - priceOf(b.k))[0];
+  const lock = !soon && SHOP.find(s => !isUnlocked(s)), want = soon || (!lock && SHOP.find(s => !S.bought[s.k]));
   const eta = left => { const r = totalRate(); if (r <= 0) return ''; const t = left / r;
     return tr('eta', t < 60 ? tr('etaS', Math.ceil(t)) : t < 3600 ? tr('etaM', Math.ceil(t / 60)) : tr('etaH', (t / 3600).toFixed(1))); };
   const need = lock ? lock.price * 0.25 : want ? priceOf(want.k) : 0, have = lock ? S.total : S.light, left = need - have;
