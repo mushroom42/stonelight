@@ -1144,6 +1144,8 @@ function say(msg, flash = true) {
 /* ---------- phone shell: bench on top, three tabs underneath ---------- */
 const SHELL = matchMedia('(min-height: 560px)');
 let tab = 'shop', tabTouched = 0;
+// when each affordable upgrade was last shown to the player (it calls again after 90s unbought), and the one picked to pulse
+const upsSeen = new Map(); let upsPick = null;
 function setTab(t, byUser) {
   if (byUser) tabTouched = performance.now();
   tab = t;
@@ -1203,6 +1205,7 @@ function renderSide() {
   }
 
   let upsCue = false, affordable = 0;
+  const afford = [];
   const nudgeKey = S.tut.placed && !S.tut.upgraded
     ? (UPS.find(u => (u.show() || upLevel(u.k) > 0) && upLevel(u.k) < u.max && S.light >= u.cost(upLevel(u.k))) || {}).k : null;
   if (nudgeKey && !S.tut.said) { S.tut.said = 1; say(tr('workshopSay')); }
@@ -1224,16 +1227,29 @@ function renderSide() {
     b.firstChild.textContent = tr(maxed ? 'maxed' : u.max === 1 ? 'buyBtn' : 'upBtn');
     b.querySelector('b').textContent = maxed ? '' : fmt(c);
     if (row.classList.contains('nudge')) upsCue = true;
-    if (!b.disabled) affordable++;
+    if (!b.disabled) { affordable++; afford.push([u.k, c]); if (u.k === upsPick) b.classList.add('pulse'); }
   }
   const upsAny = UPS.some(u => !$('ups').querySelector(`[data-k="${u.k}"]`).hidden);
   $('tabUps').hidden = !upsAny;
   if (tab === 'ups' && !upsAny) setTab('shop');
   $('tabCaseN').textContent = `${S.cases.length}/${S.slots}`;
   $('tabUpsN').textContent = affordable ? tr('upsReady', affordable) : '';
+  // an upgrade that just became affordable calls the player over once; inside, the cheapest new one pulses
+  const now = performance.now();
+  const fresh = afford.filter(([k]) => !upsSeen.has(k) || now - upsSeen.get(k) > 90000).sort((a, b) => a[1] - b[1]);
+  if (tab === 'ups') {
+    if (!upsPick && fresh.length) {
+      upsPick = fresh[0][0];
+      $('ups').querySelector(`[data-k="${upsPick}"]`).scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+    }
+    afford.forEach(([k]) => upsSeen.set(k, now));
+  } else upsPick = null;
+  // the workshop only calls while a stone is being worked; a finished gem or an empty bench has its own next step
+  if (fresh.length && tab !== 'ups' && S.bench && S.bench.stage !== 'done') upsCue = true;
   // one prompt at a time: while the bench is empty its own button is the next step, so the workshop waits its turn
   $('tabShop').classList.remove('cue');
-  $('tabUps').classList.toggle('cue', upsCue && busy);
+  // the oil button under a cracking emerald already points at the same upgrade
+  $('tabUps').classList.toggle('cue', upsCue && busy && S.bench.stage !== 'done' && !document.querySelector('#oilBtn.pulse'));
 }
 
 function renderBench() {
@@ -1497,6 +1513,7 @@ function upgrade(k) {
   S.light -= c;
   if (k === 'slots') S.slots++; else S.up[k]++;
   S.tut.upgraded = 1;
+  upsSeen.delete(k); if (k === upsPick) upsPick = null;
   sfx('ping', 1.2, 0.6, 0.05); sfx('ping', 1.5, 0.6, 0.13);
   renderAll();
 }
