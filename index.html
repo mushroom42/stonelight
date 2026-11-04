@@ -1,0 +1,1665 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>藏光</title>
+<meta name="description" content="像素风宝石切割增量游戏。敲开原石，用真实的折射角度把光锁在宝石里，从萤石一路切到钻石。">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- web fonts must never block first paint: Google Fonts is unreachable from mainland China, and a blocking sheet there means a blank page until timeout -->
+<link rel="stylesheet" id="webfonts" media="print" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&family=ZCOOL+XiaoWei&display=swap">
+<style>
+/* Layout: one crystallography plate. A double-ruled frame holds the specimen (the gem being cut) with leader-line callouts,
+   a legend column for rough stones and the workshop, and a row of figures for the display case. */
+:root {
+  --bg: #e7ebeb;          /* cool chalk plate paper, never cream */
+  --surface: #eef1f1;
+  --sunk: #dde2e3;
+  --ink: #1b2230;         /* blue-black engraving ink */
+  --muted: #4b5566;       /* secondary ink */
+  --line: #b4bcc2;        /* hairline */
+  --accent: #2e43a6;      /* ultramarine wash for prompts */
+  --shadow: #c4cacd;      /* caustic shadow under the specimen */
+  --good: #2a7a4c;
+  --bad: #a3263a;
+  --f-display: "Old Standard TT", "ZCOOL XiaoWei", "Songti SC", "STSong", serif;
+  --f-body: "Old Standard TT", "Noto Serif SC", "Songti SC", "STSong", serif;
+  --f-num: "Old Standard TT", Georgia, "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #171c25; --sunk: #0e1117; --ink: #dfe4ea; --muted: #9ba6b5; --line: #2f3744;
+    --accent: #93a6ff; --shadow: #232a35; --good: #79d39f; --bad: #ff8e9b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #171c25; --sunk: #0e1117; --ink: #dfe4ea; --muted: #9ba6b5; --line: #2f3744;
+  --accent: #93a6ff; --shadow: #232a35; --good: #79d39f; --bad: #ff8e9b; color-scheme: dark;
+}
+:root[lang="en"] { --f-body: "Old Standard TT", Georgia, "Times New Roman", serif; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--f-body); font-size: 15px; line-height: 1.6; scrollbar-color: var(--line) transparent; }
+:root[lang="en"] body { font-size: 16px; }
+::selection { background: var(--gem, var(--accent)); color: var(--bg); }
+:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+
+.app {
+  max-width: 1200px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+/* the plate: outer 2px rule, 4px gap, inner hairline. These three weights are the only lines on the page. */
+.plate { border: 2px solid var(--ink); padding: 4px; }
+.plate-in { border: 1px solid var(--ink); padding: clamp(14px, 1.8vw, 22px) clamp(14px, 2.4vw, 28px); display: flex; flex-direction: column; gap: clamp(12px, 1.6vw, 18px); }
+
+.top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 8px 16px; padding-bottom: 10px; border-bottom: 1px solid var(--ink); }
+.plate-no { font-family: var(--f-display); font-size: 15px; letter-spacing: .14em; color: var(--muted); align-self: start; }
+.brand { text-align: center; }
+.brand h1 { font-family: var(--f-display); font-weight: 400; font-size: clamp(34px, 3.6vw, 46px); line-height: 1; margin: 0; letter-spacing: .18em; text-indent: .18em; }
+:root[lang="en"] .brand h1 { letter-spacing: .08em; text-indent: .08em; }
+.brand p { margin: 4px auto 0; color: var(--muted); font-style: italic; max-width: 60ch; text-wrap: balance; line-height: 1.45; }
+.meter { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.meter-row { display: flex; align-items: baseline; gap: 8px; }
+.meter .lbl { font-family: var(--f-display); font-size: 15px; letter-spacing: .14em; color: var(--muted); }
+.meter .num { font-family: var(--f-num); font-size: clamp(30px, 3.4vw, 40px); line-height: 1; white-space: nowrap; }
+/* digits sit in fixed cells so the count never shoves the layout */
+.num .d { display: inline-block; width: .58em; text-align: center; }
+.num .p { display: inline-block; width: .28em; text-align: center; }
+.num .w { display: inline-block; width: 1em; text-align: center; font-family: var(--f-display); font-size: .7em; }
+.meter .rate { font-family: var(--f-num); font-style: italic; font-size: 14px; color: var(--muted); }
+.meter .toggles { display: flex; gap: 6px; }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 0; align-items: start; }
+.grid > .bench { padding-right: clamp(16px, 2.4vw, 32px); position: sticky; top: calc(16px + var(--rh, 0px)); transition: top .35s cubic-bezier(.16, 1, .3, 1); }
+.grid > .side { padding-left: clamp(16px, 2.4vw, 32px); border-left: 1px solid var(--line); }
+.case { border-top: 1px solid var(--ink); padding-top: 14px; }
+h2 { font-family: var(--f-display); font-weight: 400; font-size: 17px; letter-spacing: .16em; margin: 0 0 6px; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+:root[lang="en"] h2 { font-variant: small-caps; letter-spacing: .1em; font-size: 19px; }
+h2 small { font-family: var(--f-body); font-size: 13px; letter-spacing: 0; color: var(--muted); font-style: italic; font-variant: normal; }
+
+/* specimen with leader-line callouts */
+.bench { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.specimen { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; }
+.callouts { display: flex; flex-direction: column; gap: 34px; }
+.callout { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.callout .cv { display: flex; flex-direction: column; line-height: 1.2; }
+.callout .cl { font-size: 12px; color: var(--muted); letter-spacing: .06em; white-space: nowrap; }
+.callout b { font-family: var(--f-num); font-weight: 400; font-size: 20px; white-space: nowrap; }
+.callout .lead { flex: 1; min-width: 16px; height: 1px; background: var(--ink); opacity: .55; position: relative; }
+.callout .lead::after { content: ""; position: absolute; top: -2px; width: 5px; height: 5px; border-radius: 50%; background: var(--ink); }
+.callouts.l .lead::after { right: -2px; }
+.callouts.l .callout { flex-direction: row; text-align: right; }
+.callouts.l .cv { align-items: flex-end; }
+.callouts.r .lead::after { left: -2px; }
+.specimen.empty .callouts { visibility: hidden; }
+.stage-wrap { position: relative; display: flex; justify-content: center; }
+.stage-box { position: relative; margin: -8px auto -4px; max-width: 100%; }
+/* the hand-tint wash: deepens with every facet */
+.wash {
+  /* centred on the gem itself: the sprite's centre sits at y 56 of the 150px canvas */
+  position: absolute; left: 50%; top: 37.3%; width: 72%; aspect-ratio: 1; transform: translate(-50%, -50%);
+  pointer-events: none; opacity: 0; border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--gem, transparent) 55%, transparent) 62%, var(--gem, transparent) 100%);
+  filter: url(#washEdge); mix-blend-mode: multiply; transition: opacity .9s cubic-bezier(.16, 1, .3, 1);
+}
+:root[data-theme="dark"] .wash { mix-blend-mode: screen; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .wash { mix-blend-mode: screen; } }
+#benchCv {
+  position: relative; display: block; margin: 0; width: clamp(200px, min(30vw, calc((100svh - 330px) * .853)), 400px); aspect-ratio: 128 / 150; max-width: 100%;
+  image-rendering: pixelated; cursor: pointer; touch-action: manipulation; outline: none;
+}
+#benchCv:focus-visible { outline: 1px dashed var(--ink); outline-offset: -6px; }
+#benchCv.idle { cursor: default; }
+
+.caption { text-align: center; display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; column-gap: .5em; row-gap: 2px; }
+.caption > div:not(.gname) { flex-basis: 100%; }
+.caption .fig { font-family: var(--f-num); font-style: italic; font-size: 17px; color: var(--muted); }
+.gname { font-family: var(--f-display); font-size: 26px; line-height: 1.15; letter-spacing: .06em; padding-bottom: 4px; border-bottom: 2px solid var(--gem, var(--ink)); }
+.gen { font-family: var(--f-num); font-style: italic; font-size: 15px; color: var(--muted); }
+.gformula { font-family: var(--f-num); font-size: 15px; color: var(--ink); }
+.specs { display: none; }
+
+.status { display: flex; flex-direction: column; gap: 6px; }
+.hint { font-size: 15px; text-align: center; text-wrap: balance; }
+.bar { height: 3px; background: var(--line); position: relative; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--gem, var(--ink)); width: 0; transition: width .25s cubic-bezier(.16, 1, .3, 1); }
+.bartext { font-family: var(--f-num); font-style: italic; font-size: 13px; color: var(--muted); text-align: center; font-variant-numeric: tabular-nums; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.ticker { margin: 0; font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; min-height: 3.2em; font-style: italic; }
+.ticker.flash { color: var(--ink); }
+.ticker:empty { display: none; }
+
+/* angle scale */
+.angle { display: flex; flex-direction: column; gap: 4px; }
+.tap-tip {
+  position: absolute; top: 0; left: 50%; transform: translateX(-50%); pointer-events: none; white-space: nowrap; z-index: 2;
+  background: var(--ink); color: var(--bg); font-family: var(--f-display); font-size: 15px; letter-spacing: .08em; padding: 4px 12px; animation: tipbob 1.1s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+.tap-tip::after { content: ""; position: absolute; left: 50%; bottom: -6px; margin-left: -6px; border: 6px solid transparent; border-bottom: 0; border-top-color: var(--ink); }
+.tap-tip.warn { background: var(--bad); color: var(--bg); }
+.tap-tip.warn::after { border-top-color: var(--bad); }
+/* running head: once the header counter scrolls away, a slim strip carries the title and the light count, like the head of a printed page */
+html { scroll-padding-top: calc(env(safe-area-inset-top, 0px) + var(--rh, 0px)); }
+.runhead {
+  position: fixed; z-index: 15; inset: 0 0 auto; padding-top: env(safe-area-inset-top, 0px);
+  background: var(--bg); border-bottom: 1px solid var(--ink);
+  transform: translateY(-100%); visibility: hidden; transition: transform .35s cubic-bezier(.16, 1, .3, 1), visibility 0s .35s;
+}
+.runhead.on { transform: none; visibility: visible; transition: transform .35s cubic-bezier(.16, 1, .3, 1); }
+.rh-in {
+  max-width: 1200px; margin: 0 auto; padding-block: 5px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+}
+.rh-title { font-family: var(--f-display); font-size: 15px; letter-spacing: .14em; color: var(--muted); white-space: nowrap; }
+.rh-meter { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.rh-meter .lbl { font-family: var(--f-display); font-size: 13px; letter-spacing: .14em; color: var(--muted); }
+.rh-meter .num { font-family: var(--f-num); font-size: 24px; line-height: 1.1; white-space: nowrap; }
+.rh-meter .rate { font-family: var(--f-num); font-style: italic; font-size: 13px; color: var(--muted); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { .runhead, .runhead.on, .grid > .bench { transition: none; } }
+/* first unlock of a rough stone: a small plate card slides in, a hand-tint wash brushes across it */
+.unlock {
+  position: fixed; z-index: 30; left: 50%; top: calc(env(safe-area-inset-top, 0px) + var(--rh, 0px) + 14px); transform: translateX(-50%);
+  display: flex; align-items: center; gap: 14px; padding: 8px 14px 8px 8px; width: max-content; max-width: calc(100vw - 32px);
+  background: var(--bg); border: 2px solid var(--ink); outline: 1px solid var(--ink); outline-offset: -6px;
+  box-shadow: 0 18px 40px -20px rgba(10, 14, 22, .55); animation: unlockIn .6s cubic-bezier(.16, 1, .3, 1);
+}
+.unlock::before { content: ""; position: absolute; inset: 6px; background: var(--gem, var(--accent)); opacity: .2; transform-origin: left; animation: tintIn 1.2s cubic-bezier(.16, 1, .3, 1) .15s both; }
+.unlock > * { position: relative; }
+.unlock canvas { width: 88px; height: 103px; margin-block: -10px; image-rendering: pixelated; }
+.unlock .u-text { display: flex; flex-direction: column; min-width: 0; }
+.unlock .u-text b { font-family: var(--f-display); font-weight: 400; font-size: 20px; letter-spacing: .04em; }
+.unlock .u-text span { font-family: var(--f-num); font-style: italic; font-size: 13px; color: var(--muted); }
+@keyframes unlockIn { from { transform: translate(-50%, -24px); opacity: 0; } }
+@keyframes tintIn { from { transform: scaleX(0); } }
+.row.fresh { animation: freshRow 2.4s cubic-bezier(.16, 1, .3, 1) 2; }
+@keyframes freshRow { 0%, 35% { background: color-mix(in srgb, var(--gem) 22%, transparent); } 100% { background: transparent; } }
+/* a gem arriving in the case: drops into its slot while the slot flashes its colour */
+.slot.arrive { animation: slotGlow 1.8s cubic-bezier(.16, 1, .3, 1) .35s both; }
+.slot.arrive canvas { animation: dropIn .75s cubic-bezier(.16, 1, .3, 1) .35s both; }
+@keyframes slotGlow { 0%, 30% { background: color-mix(in srgb, var(--gem) 24%, transparent); } 100% { background: transparent; } }
+@keyframes dropIn { from { transform: translateY(-48px) scale(1.35); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .unlock, .unlock::before, .row.fresh, .slot.arrive, .slot.arrive canvas { animation: none; } }
+@keyframes tipbob { 50% { transform: translate(-50%, 5px); } }
+button.pulse { animation: pulse 1.3s cubic-bezier(.16, 1, .3, 1) infinite; }
+@keyframes pulse { 0% { outline: 1px solid var(--accent); outline-offset: 1px; } 100% { outline: 1px solid transparent; outline-offset: 9px; } }
+.row.nudge { background: color-mix(in srgb, var(--accent) 9%, transparent); margin-inline: -10px; padding-inline: 10px; }
+.nudge-note { display: none; font-size: 13px; color: var(--accent); font-style: italic; }
+.row.nudge .nudge-note { display: inline; }
+@media (prefers-reduced-motion: reduce) { .tap-tip, button.pulse { animation: none; } .wash, .bar i { transition: none; } }
+.gauge-tip { font-size: 15px; text-align: center; transition: color .15s; }
+.gauge-tip.now { color: var(--accent); }
+#gaugeCv { width: 100%; height: 56px; display: block; cursor: pointer; touch-action: manipulation; }
+#angleCv { width: 100%; height: 250px; display: block; cursor: pointer; touch-action: manipulation; margin-top: 8px; }
+.angle summary { font-size: 13px; color: var(--muted); cursor: pointer; width: fit-content; margin-inline: auto; font-style: italic; list-style: none; display: flex; align-items: center; gap: 8px; }
+.angle summary::-webkit-details-marker { display: none; }
+.angle summary::before { content: ""; border-left: 6px solid var(--muted); border-block: 4px solid transparent; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
+.angle details[open] summary::before { transform: rotate(90deg); }
+.angle details { padding-top: 4px; }
+.readout { display: flex; gap: 6px 18px; flex-wrap: wrap; justify-content: center; font-size: 13px; color: var(--muted); }
+.readout b { color: var(--ink); font-family: var(--f-num); font-weight: 400; font-size: 15px; }
+
+/* buttons are engraved plate labels: a ruled box, small caps, no shadow */
+button {
+  font: inherit; font-size: 14px; color: var(--ink); background: transparent; border: 1px solid var(--ink);
+  padding: 5px 12px; cursor: pointer; white-space: nowrap; border-radius: 0; letter-spacing: .04em;
+  transition: background-color .15s, color .15s;
+}
+button:hover:not(:disabled) { background: var(--ink); color: var(--bg); }
+button:active:not(:disabled) { background: var(--muted); }
+button:disabled { color: var(--muted); border-color: var(--line); cursor: not-allowed; }
+button.primary { background: var(--ink); color: var(--bg); }
+button.primary:hover:not(:disabled) { background: var(--accent); border-color: var(--accent); }
+button b { font-family: var(--f-num); font-weight: 400; font-size: 15px; }
+.meter .toggles button { font-size: 12px; padding: 2px 8px; }
+
+/* legend */
+.side { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.legend-sec { display: flex; flex-direction: column; }
+.legend-sec h2 { padding-bottom: 6px; border-bottom: 1px solid var(--ink); margin-bottom: 0; }
+.rows { display: flex; flex-direction: column; }
+.row { display: flex; gap: 8px 14px; justify-content: space-between; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.row:first-child { border-top: 0; }
+.row-main { flex: 1 1 190px; min-width: 0; }
+.row-title { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.row-title .nm { font-family: var(--f-display); font-size: 17px; letter-spacing: .03em; }
+.row-title .sub { font-family: var(--f-num); font-size: 13px; color: var(--muted); font-style: italic; }
+.row-desc { font-size: 13px; color: var(--muted); max-width: 60ch; }
+.row-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.row.locked .nm { color: var(--muted); }
+
+/* the display case is a row of figures */
+.case-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); overflow: hidden; }
+.slot { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 4px 8px 10px; gap: 1px; min-height: 186px; border-left: 1px solid var(--line); margin-left: -1px; }
+.slot canvas { width: 100%; max-width: 124px; aspect-ratio: 128 / 150; image-rendering: pixelated; }
+.slot .cap { display: flex; gap: .4em; align-items: baseline; padding-bottom: 2px; border-bottom: 2px solid var(--gem, var(--line)); }
+.slot .fig { font-family: var(--f-num); font-style: italic; font-size: 14px; color: var(--muted); }
+.slot .sn { font-family: var(--f-display); font-size: 15px; }
+.slot .sr { font-family: var(--f-num); font-size: 13px; color: var(--muted); }
+.slot.empty { justify-content: center; color: var(--muted); font-size: 13px; font-style: italic; }
+.slot.empty::before { content: ""; width: 56px; height: 56px; border-radius: 50%; border: 1px dashed var(--line); margin-bottom: 10px; }
+
+footer { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--muted); font-style: italic; }
+footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
+
+.ending { position: fixed; inset: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); display: grid; place-items: center; padding: 16px; z-index: 20; }
+.ending .card { max-width: 480px; background: var(--bg); border: 2px solid var(--ink); outline: 1px solid var(--ink); outline-offset: -7px; padding: 30px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 18px 40px -24px rgba(10, 14, 22, .55); }
+.ending h2 { font-size: 26px; letter-spacing: .06em; }
+.ending p { margin: 0; }
+.ending .big { font-family: var(--f-num); font-size: 34px; }
+.ending .actions { justify-content: flex-start; }
+
+@media (max-width: 860px) {
+  /* on a phone the callouts would push the angle scale off screen; it needs to sit right under the gem */
+  .bench.angling .callouts { display: none; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+  .grid > .bench { padding-right: 0; position: static; }
+  .grid > .side { padding-left: 0; border-left: 0; border-top: 1px solid var(--ink); margin-top: 18px; padding-top: 18px; }
+  .row-btns { flex-basis: 100%; }
+  .top { grid-template-columns: 1fr auto; }
+  .brand { grid-column: 1 / -1; grid-row: 2; }
+  .plate-no { align-self: center; }
+}
+@media (max-width: 560px) {
+  .specimen { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .stage-wrap { grid-column: 1 / -1; grid-row: 1; }
+  .callouts { gap: 10px; }
+  .callout { flex-direction: column !important; align-items: center; gap: 4px; text-align: center !important; }
+  .callout .cv { align-items: center !important; }
+  .callout .lead { order: -1; flex: none; width: 1px; height: 16px; min-width: 0; }
+  .callouts .lead::after { left: -2px; right: auto; top: -2px; }
+  #benchCv { width: min(78vw, 300px); }
+  .plate-in { padding: 14px; }
+}
+</style>
+
+<div class="app">
+ <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><filter id="washEdge" x="-15%" y="-15%" width="130%" height="130%"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="7"/><feDisplacementMap in="SourceGraphic" scale="24" xChannelSelector="R" yChannelSelector="G"/></filter></svg>
+ <div id="runhead" class="runhead" aria-hidden="true"><div class="rh-in"><span class="rh-title" data-i18n="title">藏光</span><span class="rh-meter"><span class="lbl" data-i18n="light">光</span><span id="rhLight" class="num">0</span><span id="rhRate" class="rate"></span></span></div></div>
+ <div id="unlock" class="unlock" hidden role="status" aria-live="polite"><canvas id="unlockCv" width="128" height="150"></canvas><div class="u-text"><b id="unlockName"></b><span id="unlockSub"></span></div><button id="unlockGo"></button></div>
+ <div class="plate"><div class="plate-in">
+  <header class="top">
+    <div class="plate-no" id="plateNo">图版 I</div>
+    <div class="brand">
+      <h1 data-i18n="title">藏光</h1>
+      <p data-i18n="tagline">把原石切成能留住光的形状。从一块萤石开始，一直切到钻石。</p>
+    </div>
+    <div class="meter" aria-live="off">
+      <div class="meter-row"><span class="lbl" data-i18n="light">光</span><span id="light" class="num">0</span></div>
+      <span id="rate" class="rate">+0 / 秒</span>
+      <div class="toggles">
+        <button id="soundBtn" class="sound" aria-pressed="true">音效：开</button>
+        <button id="langBtn" class="sound">EN</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="bench" id="bench">
+      <div class="specimen" id="specimen">
+        <div class="callouts l">
+          <div class="callout"><span class="cv"><span class="cl" data-i18n="cHard">硬度</span><b id="cHard"></b></span><i class="lead"></i></div>
+          <div class="callout"><span class="cv"><span class="cl" data-i18n="cRI">折射率</span><b id="cRI"></b></span><i class="lead"></i></div>
+        </div>
+        <div class="stage-wrap">
+          <div class="stage-box"><div class="wash" id="wash"></div><canvas id="benchCv" width="128" height="150" tabindex="0" role="button" aria-label="工作台上的宝石，点击敲击或研磨" data-i18n-aria="benchAria"></canvas></div>
+          <div id="tapTip" class="tap-tip" hidden>点我</div>
+        </div>
+        <div class="callouts r">
+          <div class="callout"><i class="lead"></i><span class="cv"><span class="cl" data-i18n="cDisp">色散</span><b id="cDisp"></b></span></div>
+          <div class="callout"><i class="lead"></i><span class="cv"><span class="cl" data-i18n="cQ">品质</span><b id="cQ"></b></span></div>
+        </div>
+      </div>
+
+      <div id="anglePanel" class="angle" hidden>
+        <div id="gaugeTip" class="gauge-tip" aria-live="polite">指针走到发亮的那一段时，点一下宝石</div>
+        <canvas id="gaugeCv" aria-label="角度指针。扫到亮区时点击宝石或按空格" data-i18n-aria="gaugeAria"></canvas>
+        <details id="angleMore">
+        <summary data-i18n="more">想看光在石头里怎么走？</summary>
+        <canvas id="angleCv" aria-label="光路图" data-i18n-aria="diagramAria"></canvas>
+        <div class="readout">
+          <span><span data-i18n="rTheta">亭部角</span> <b id="rTheta">40.0°</b></span>
+          <span><span data-i18n="rCrit">临界角</span> <b id="rCrit">0°</b></span>
+          <span><span data-i18n="rScore">回光率</span> <b id="rScore">0%</b></span>
+          <span><span data-i18n="rQ">品质</span> <b id="rQ">×1.0</b></span>
+        </div>
+        </details>
+      </div>
+
+      <div class="status">
+        <div id="hint" class="hint"></div>
+        <div class="bar" id="barWrap"><i id="barFill"></i></div>
+        <div id="barText" class="bartext"></div>
+      </div>
+      <div id="benchActions" class="actions"></div>
+
+      <div class="caption">
+        <span class="fig" id="benchFig"></span>
+        <span id="gName" class="gname">工作台</span>
+        <div><span id="gEn" class="gen"></span> <span id="gFormula" class="gformula"></span></div>
+        <div id="gSpecs" class="specs"></div>
+      </div>
+      <p id="ticker" class="ticker"></p>
+    </section>
+
+    <aside class="side">
+      <section class="legend-sec">
+        <h2><span data-i18n="shopH">原石</span> <small id="shopNote"></small></h2>
+        <div id="shop" class="rows"></div>
+      </section>
+      <section class="legend-sec">
+        <h2 data-i18n="workshopH">工坊</h2>
+        <div id="ups" class="rows"></div>
+      </section>
+    </aside>
+
+  </main>
+
+  <section class="case">
+    <h2><span data-i18n="caseH">展柜</span> <small id="caseInfo"></small></h2>
+    <div id="caseGrid" class="case-grid"></div>
+  </section>
+ </div></div>
+
+  <footer>
+    <span data-i18n="footer">进度只存在这台设备的浏览器里。音效来自 Freesound（CC0）。</span>
+    <button id="resetBtn" data-i18n="reset">重新开始</button>
+    <span id="resetConfirm" hidden><span data-i18n="resetQ">确定清空全部进度？</span> <button id="resetYes" data-i18n="resetYes">清空</button> <button id="resetNo" data-i18n="resetNo">取消</button></span>
+  </footer>
+
+  <div id="ending" class="ending" hidden>
+    <div class="card">
+      <h2 data-i18n="endH">这颗钻石留住了多少光？</h2>
+      <p id="endA"></p>
+      <p class="big" id="endB"></p>
+      <p id="endC"></p>
+      <p class="row-desc" data-i18n="endNote">主线到这里结束。展柜会一直亮着，你可以接着切，也可以去赌一块黑欧泊。</p>
+      <div class="actions"><button id="endClose" class="primary" data-i18n="endClose">继续</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+// a live page can receive a newer copy of this script; the older copy must stop touching the DOM and the save
+const GEN = window.__canguangGen = (window.__canguangGen || 0) + 1;
+const live = () => window.__canguangGen === GEN;
+// the font sheet loads as print-only so it cannot block the page; switch it on once it arrives, keep system serifs if it never does
+{ const wf = document.getElementById('webfonts'); if (wf) { if (wf.sheet) wf.media = 'all'; else wf.addEventListener('load', () => { wf.media = 'all'; }, { once: true }); } }
+/* ---------- words: every player-facing string, Chinese and English side by side ---------- */
+const I18N = {
+  zh: {
+    title: '藏光', tagline: '把原石切成能留住光的形状。从一块萤石开始，一直切到钻石。', light: '光', perSec: '/ 秒',
+    soundOn: '音效：开', soundOff: '音效：关', langBtn: 'EN',
+    bench: '工作台', benchEmpty: '空着', benchAria: '工作台上的宝石，点击敲击或研磨',
+    tapRock: '点我', tapGrind: '继续点，磨出刻面', crackTip: '裂了！浸油能防裂',
+    gaugeIdle: '指针走到发亮的那一段时，点一下宝石', gaugeNow: '就是现在，点宝石！', gaugeAria: '角度指针。扫到亮区时点击宝石或按空格',
+    more: '想看光在石头里怎么走？', diagramAria: '光路图',
+    rTheta: '亭部角', rCrit: '临界角', rScore: '回光率', rQ: '品质',
+    plate: r => `图版 ${r}`, fig: n => `图 ${n}`, unlockName: n => `解锁：${n}`, unlockGo: '去看看', cHard: '硬度', cRI: '折射率', cDisp: '色散', cQ: '品质',
+    shopH: '原石', workshopH: '工坊', caseH: '展柜',
+    footer: '进度只存在这台设备的浏览器里。音效来自 Freesound（CC0）。',
+    reset: '重新开始', resetQ: '确定清空全部进度？', resetYes: '清空', resetNo: '取消',
+    endH: '这颗钻石留住了多少光？', endNote: '主线到这里结束。展柜会一直亮着，你可以接着切，也可以去赌一块黑欧泊。', endClose: '继续',
+    endA: p => `这颗钻石有 57 个刻面，留住了 ${p}% 的光，每秒送回`, endB: v => `${v} 光`,
+    endC: v => `从第一块萤石算起，你一共收集了 ${v} 光。`,
+    opalName: ['普通欧泊', '白欧泊', '晶质欧泊', '黑欧泊'],
+    opalMsg: [
+      '敲开了：普通欧泊。没有变彩，行内叫它 potch。品质 ×0.6。',
+      '敲开了：白欧泊。乳白的底子上浮着变彩，最常见的一种。品质 ×1.4。',
+      '敲开了：晶质欧泊。底子半透明，变彩更通透。品质 ×2.0。',
+      '敲开了：黑欧泊！深色的底让变彩格外显眼，这是最贵的欧泊。品质 ×3.5。',
+    ],
+    shop: {
+      fluorite: { title: '萤石原石', sub: 'CaF₂ · 硬度 4', desc: '8 个刻面。软，好切，拿来练手。', buy: ['买一块'] },
+      emerald: { title: '祖母绿原石', sub: 'Be₃Al₂Si₆O₁₈ · 硬度 7.5–8', desc: '25 个刻面，阶梯式切工。几乎每颗都有内含物，磨的时候可能开裂。', buy: ['买一块'] },
+      corundum: { title: '刚玉原石', sub: 'Al₂O₃ · 硬度 9', desc: '33 个刻面。同一种矿物，杂质决定颜色。红宝石：强光下发红色荧光，出光 ×1.3。蓝宝石：每颗让整个展柜出光 +8%。', buy: ['掺铬 → 红宝石', '掺铁钛 → 蓝宝石'] },
+      opal: { title: '欧泊原石', sub: 'SiO₂ · nH₂O · 硬度 5.5–6.5', desc: '不切刻面，只抛成弧面。敲开之前不知道是什么：可能是没有变彩的普通欧泊，也可能是黑欧泊。', buy: ['赌一块'] },
+      diamond: { title: '钻石原石', sub: 'C · 硬度 10', desc: '57 个刻面，标准圆形明亮式。临界角只有 24.4°，光进去就很难漏出来。', buy: ['买一块'] },
+    },
+    free: '免费', shopBusy: '工作台空出来才能放下一块', locked: v => `累计收集 ${v} 光后出现`,
+    facts: {
+      fluorite: '萤石的英文 fluorite 来自拉丁语 fluere，意思是「流动」，它曾被当作冶炼用的助熔剂。「荧光」fluorescence 这个词也是从萤石来的。',
+      emerald: '祖母绿的内含物多到行内叫它「花园」(jardin)。用雪松油浸填裂隙，是这一行沿用了几百年的处理方式。',
+      ruby: '红宝石和蓝宝石都是刚玉 Al₂O₃，硬度 9，仅次于钻石。红宝石里的铬在紫外线和强光下会发出红色荧光。',
+      sapphire: '蓝宝石的蓝来自铁和钛之间的电荷转移。刚玉只要不是红色，其他颜色在行内也都叫蓝宝石。',
+      diamond: '钻石是纯碳，莫氏硬度 10。能磨它的只有钻石本身，所以切磨钻石用的是钻石粉。',
+      opal: '欧泊是含水的二氧化硅，里面堆着排列整齐的微小硅球。白光在硅球间衍射，才出现随角度变化的彩色斑块，这叫「变彩」。它是圆顶，底下没有尖角可以锁光，所以不用定角。',
+      angle: '宝石底部的角度决定光能不能绕回来。角度对了，光在底部反射两次，再从顶上射出来，宝石就亮。钻石的好角度最宽，萤石最窄。',
+    },
+    up: { tool: '錾子与砂盘', wheel: '自动磨盘', polish: '氧化铈抛光粉', slots: '展柜格位', lamp: '展柜射灯', oil: '浸油处理', dust: '钻石微粉' },
+    upTool: (a, b) => `每次点击：敲 ${a} · 磨 ${b}`, upWheelOn: a => `每秒自动研磨 ${a}`, upWheelOff: '工作台自己转起来，不点也在磨',
+    upPolish: m => `所有宝石出光 ×1.25（当前 ×${m}）`, upSlots: n => `现在能放 ${n} 颗，最多 9 颗`,
+    upLamp: m => `展柜里的宝石出光 ×1.3（当前 ×${m}）`, upOil: p => `祖母绿每磨一面的开裂几率：${p}%`,
+    upDustOn: '已备好。钻石按正常速度研磨。', upDustOff: '只有钻石能磨钻石。没有它，钻石每一面要磨 5 倍久。',
+    upBtn: '升级 · ', buyBtn: '购买 · ', maxed: '已满 ', owned: '已拥有',
+    nudge: '光可以花在这里', nudgeOil: '能防祖母绿开裂', workshopSay: '攒下的光可以在「工坊」里花掉。升级以后敲得更快、磨得更快。',
+    specs: (h, n, d) => `硬度 ${h} · 折射率 ${n} · 色散 ${d}`, specsQ: q => ` · 品质 ×${q}`,
+    hEmpty: '从「原石」里挑一块放上工作台。', hRock: '点宝石，敲掉外面那层石皮。', rockBar: (a, b) => `石皮 ${a} / ${b}`,
+    hAngle: '指针扫到亮的地方时，点一下宝石（或按空格）。',
+    hGrind: '点宝石磨刻面。每多一面，每秒多出一点光。', hPolish: '点宝石抛光弧面。抛得越亮，变彩露出来越多。',
+    hRate: v => `现在每秒 ${v} 光。`, hCrack: p => ` 每磨一面有 ${p} 几率开裂。`,
+    oilBtn: (a, b) => `浸油处理：开裂 ${a} → ${b} · `,
+    barFacet: (f, m) => `刻面 ${f} / ${m}`, barPolish: (f, m) => `抛光 ${f} / ${m}`,
+    barThisFacet: (p, n) => ` · 这一面 ${p} / ${n}`, barThisPass: (p, n) => ` · 这一遍 ${p} / ${n}`,
+    place: '放进展柜', placeNote: v => `放进展柜后每秒 ${v} 光。`,
+    swap: n => `换下最暗的${n}`, swapNote: n => `展柜满了。它比展柜里最暗的${n}亮，可以换下来。`,
+    sell: v => `卖给收藏家 · ${v}`, sellNote: '展柜满了，它也不比里面的亮。可以卖掉换光，或者先扩容展柜。', done: '切好了。',
+    caseInfo: (a, b, v) => `${a} / ${b} · 每秒 ${v} 光`, slotEmpty: '空位', slotRate: (v, q) => `${v}/秒 · ×${q}`,
+    cvGood: '好角度', cvTop: '顶面', cvLeak: '红色虚线：从底部漏掉的光', cvCrit: '临界角',
+    lockGreat: p => `漂亮，光几乎全留住了（${p}%）。`, lockOk: p => `留住了 ${p}% 的光，还有一些从底下漏走了。`,
+    lockBad: p => `只留住 ${p}% 的光，大部分从底下漏走了。下一块等指针走到亮区再点。`,
+    retired: n => `${n}从展柜里撤下来了。`, sold: v => `卖给了收藏家，换来 ${v} 光。`,
+    crackMsg: '磨到内含物，裂了，这一面白磨了。点工作台下方的「浸油处理」能降低开裂几率。', crackMsgMax: '磨到内含物，裂了，这一面白磨了。',
+    restart: '从一块萤石重新开始。',
+    welcome: '工作台上有一块萤石原石。点它敲掉石皮。切好的宝石会发光，光就是这里的钱。',
+  },
+  en: {
+    title: 'Stonelight', tagline: 'Cut rough stones into shapes that keep the light. Start with a lump of fluorite and work your way up to diamond.', light: 'Light', perSec: '/ s',
+    soundOn: 'Sound: on', soundOff: 'Sound: off', langBtn: '中文',
+    bench: 'Workbench', benchEmpty: 'empty', benchAria: 'Gem on the workbench. Click to chip or grind',
+    tapRock: 'Tap me', tapGrind: 'Keep tapping to grind facets', crackTip: 'Cracked! Oil helps',
+    gaugeIdle: 'Tap the gem when the needle reaches the glowing part', gaugeNow: 'Now! Tap the gem!', gaugeAria: 'Angle needle. Tap the gem or press Space when it is in the glow',
+    more: 'How does light travel inside the stone?', diagramAria: 'Light path',
+    rTheta: 'Pavilion angle', rCrit: 'Critical angle', rScore: 'Light kept', rQ: 'Quality',
+    plate: r => `Plate ${r}`, fig: n => `Fig. ${n}`, unlockName: n => `Unlocked: ${n}`, unlockGo: 'Show me', cHard: 'Hardness', cRI: 'Refractive index', cDisp: 'Dispersion', cQ: 'Quality',
+    shopH: 'Rough stones', workshopH: 'Workshop', caseH: 'Display case',
+    footer: 'Progress is saved in this browser only. Sounds from Freesound (CC0).',
+    reset: 'Start over', resetQ: 'Erase all progress?', resetYes: 'Erase', resetNo: 'Cancel',
+    endH: 'How much light did this diamond keep?', endNote: 'That is the end of the main path. Your case keeps glowing. Keep cutting, or try your luck for a black opal.', endClose: 'Continue',
+    endA: p => `57 facets, ${p}% of the light kept. Every second it sends back`, endB: v => `${v} light`,
+    endC: v => `Since your first fluorite, you have gathered ${v} light.`,
+    opalName: ['Common opal', 'White opal', 'Crystal opal', 'Black opal'],
+    opalMsg: [
+      'Cracked open: common opal. No play-of-color; the trade calls it potch. Quality ×0.6.',
+      'Cracked open: white opal. Flashes of color on a milky body, the most common kind. Quality ×1.4.',
+      'Cracked open: crystal opal. A see-through body makes the colors clearer. Quality ×2.0.',
+      'Cracked open: black opal! The dark body makes every color pop. This is the most valuable opal. Quality ×3.5.',
+    ],
+    shop: {
+      fluorite: { title: 'Fluorite rough', sub: 'CaF₂ · hardness 4', desc: '8 facets. Soft and easy to cut. Good for practice.', buy: ['Buy one'] },
+      emerald: { title: 'Emerald rough', sub: 'Be₃Al₂Si₆O₁₈ · hardness 7.5–8', desc: '25 facets in a step cut. Almost every emerald has inclusions, so it may crack while you grind.', buy: ['Buy one'] },
+      corundum: { title: 'Corundum rough', sub: 'Al₂O₃ · hardness 9', desc: '33 facets. One mineral; the impurity decides the color. Ruby glows red under strong light, light ×1.3. Each sapphire adds +8% to the whole case.', buy: ['Add chromium → ruby', 'Add iron + titanium → sapphire'] },
+      opal: { title: 'Opal rough', sub: 'SiO₂ · nH₂O · hardness 5.5–6.5', desc: 'No facets, just a polished dome. You will not know what you have until it cracks open: plain common opal, or a black opal.', buy: ['Take a gamble'] },
+      diamond: { title: 'Diamond rough', sub: 'C · hardness 10', desc: '57 facets in a round brilliant cut. Its critical angle is only 24.4°, so light that gets in has a hard time leaking out.', buy: ['Buy one'] },
+    },
+    free: 'Free', shopBusy: 'Clear the workbench first', locked: v => `Appears after you have gathered ${v} light`,
+    facts: {
+      fluorite: 'Fluorite takes its name from the Latin fluere, "to flow"; it was used as a flux in smelting. The word "fluorescence" comes from fluorite too.',
+      emerald: 'Emeralds have so many inclusions that the trade calls them the jardin, the garden. Filling the cracks with cedarwood oil is a practice centuries old.',
+      ruby: 'Ruby and sapphire are both corundum, Al₂O₃, hardness 9, second only to diamond. The chromium in ruby glows red under UV and strong light.',
+      sapphire: 'Sapphire gets its blue from charge transfer between iron and titanium. In the trade, corundum of any color except red is called sapphire.',
+      diamond: 'Diamond is pure carbon, hardness 10. Only diamond can cut diamond, so diamonds are polished with diamond powder.',
+      opal: 'Opal is silica with water in it, packed with tiny spheres in neat rows. White light diffracts between them, making patches of color that shift as the stone turns. This is called play-of-color. An opal is a dome with no point underneath to trap light, so there is no angle to set.',
+      angle: 'The angle at the bottom of a gem decides whether light comes back. Get it right and light bounces twice inside, then shoots out the top and the gem shines. Diamond has the widest sweet spot; fluorite has the narrowest.',
+    },
+    up: { tool: 'Chisel & lap', wheel: 'Auto grinder', polish: 'Cerium oxide polish', slots: 'Case slots', lamp: 'Case spotlight', oil: 'Oil treatment', dust: 'Diamond powder' },
+    upTool: (a, b) => `Per tap: chip ${a} · grind ${b}`, upWheelOn: a => `Grinds ${a} per second on its own`, upWheelOff: 'The bench keeps grinding even when you do not tap',
+    upPolish: m => `All gems shine ×1.25 (now ×${m})`, upSlots: n => `Holds ${n} now, up to 9`,
+    upLamp: m => `Gems in the case shine ×1.3 (now ×${m})`, upOil: p => `Chance an emerald cracks per facet: ${p}%`,
+    upDustOn: 'Ready. Diamonds grind at normal speed.', upDustOff: 'Only diamond can cut diamond. Without it, every diamond facet takes 5 times as long.',
+    upBtn: 'Upgrade · ', buyBtn: 'Buy · ', maxed: 'Maxed ', owned: 'Owned',
+    nudge: 'Spend your light here', nudgeOil: 'Stops emerald cracks', workshopSay: 'You can spend light in the Workshop. Upgrades make you chip and grind faster.',
+    specs: (h, n, d) => `Hardness ${h} · RI ${n} · Dispersion ${d}`, specsQ: q => ` · Quality ×${q}`,
+    hEmpty: 'Pick a stone from Rough stones and put it on the bench.', hRock: 'Tap the stone to chip off the crust.', rockBar: (a, b) => `Crust ${a} / ${b}`,
+    hAngle: 'When the needle sweeps into the glow, tap the gem (or press Space).',
+    hGrind: 'Tap the gem to grind facets. Each new facet adds a little light per second.', hPolish: 'Tap the gem to polish the dome. The shinier it gets, the more color shows.',
+    hRate: v => ` Right now it makes ${v} light per second.`, hCrack: p => ` Each facet has a ${p} chance to crack.`,
+    oilBtn: (a, b) => `Oil treatment: cracks ${a} → ${b} · `,
+    barFacet: (f, m) => `Facets ${f} / ${m}`, barPolish: (f, m) => `Polish ${f} / ${m}`,
+    barThisFacet: (p, n) => ` · this facet ${p} / ${n}`, barThisPass: (p, n) => ` · this pass ${p} / ${n}`,
+    place: 'Put in the case', placeNote: v => `In the case it makes ${v} light per second.`,
+    swap: n => `Replace the dimmest ${n}`, swapNote: n => `The case is full. This one outshines the dimmest ${n}, so you can swap it in.`,
+    sell: v => `Sell to a collector · ${v}`, sellNote: 'The case is full and this one is no brighter. Sell it for light, or add case slots first.', done: 'Finished. ',
+    caseInfo: (a, b, v) => `${a} / ${b} · ${v} light/s`, slotEmpty: 'Empty', slotRate: (v, q) => `${v}/s · ×${q}`,
+    cvGood: 'sweet spot', cvTop: 'top', cvLeak: 'red dashes: light leaking out the bottom', cvCrit: 'critical angle',
+    lockGreat: p => `Beautiful. Almost all the light stayed in (${p}%).`, lockOk: p => `${p}% of the light stayed in. Some leaked out the bottom.`,
+    lockBad: p => `Only ${p}% of the light stayed in; most leaked out the bottom. Next time, wait for the needle to reach the glow.`,
+    retired: n => `The ${n} came out of the case.`, sold: v => `Sold to a collector for ${v} light.`,
+    crackMsg: 'Hit an inclusion and it cracked. That facet is lost. Tap "Oil treatment" under the bench to lower the odds.', crackMsgMax: 'Hit an inclusion and it cracked. That facet is lost.',
+    restart: 'Starting over with a lump of fluorite.',
+    welcome: 'There is a fluorite rough on the bench. Tap it to chip off the crust. Finished gems glow, and light is the money here.',
+  },
+};
+let LANG = 'zh';
+try { LANG = localStorage.getItem('canguang-lang') || ((navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en'); } catch (e) {}
+if (!I18N[LANG]) LANG = 'zh';
+const L = () => I18N[LANG];
+const tr = (k, ...a) => { const v = L()[k] ?? I18N.zh[k]; return typeof v === 'function' ? v(...a) : v; };
+const gn = k => LANG === 'zh' ? GEMS[k].name : GEMS[k].en;
+/* ---------- data ---------- */
+const GEMS = {
+  fluorite: { group: 'fluorite', name: '萤石', en: 'Fluorite', f: 'CaF₂', mohs: 4, mohsTxt: '4', n: 1.434, disp: .007, maxF: 8, shape: 'octa',
+    pal: ['#22114a', '#45268a', '#7650c6', '#b39cf0', '#efe8ff'], alt: ['#0d434b', '#1d7a82', '#3bb3b0', '#93e8de', '#e8fffb'],
+    rock: ['#6d6876', '#837d8c', '#9a94a3'], caust: ['#b39cf0', '#8fe8dc'], ui: '#7650c6', swing: 4.5 },
+  emerald: { group: 'emerald', name: '祖母绿', en: 'Emerald', f: 'Be₃Al₂Si₆O₁₈', mohs: 7.75, mohsTxt: '7.5–8', n: 1.577, disp: .014, maxF: 25, shape: 'step',
+    pal: ['#0a3a20', '#156b3c', '#2fa85d', '#86e3a6', '#ebfff2'],
+    rock: ['#5d6a5e', '#74806e', '#8a9785'], caust: ['#a6f0b8', '#f0ee86'], ui: '#2a9a55', swing: 10 },
+  ruby: { group: 'corundum', name: '红宝石', en: 'Ruby', f: 'Al₂O₃ · Cr', mohs: 9, mohsTxt: '9', n: 1.762, disp: .018, maxF: 33, shape: 'oval',
+    pal: ['#48061a', '#8a0f2f', '#cd2349', '#ff7f96', '#ffe6ec'],
+    rock: ['#6b625e', '#827772', '#988d88'], caust: ['#ff7f9c', '#ffb46b', '#c58bff'], ui: '#cd2349', swing: 14 },
+  sapphire: { group: 'corundum', name: '蓝宝石', en: 'Sapphire', f: 'Al₂O₃ · Fe, Ti', mohs: 9, mohsTxt: '9', n: 1.762, disp: .018, maxF: 33, shape: 'oval',
+    pal: ['#09154e', '#1a3399', '#3c67d8', '#93b3ff', '#e8efff'],
+    rock: ['#6b625e', '#827772', '#988d88'], caust: ['#7fa9ff', '#7fe9ff', '#b08bff'], ui: '#3c67d8', swing: 14 },
+  opal: { group: 'opal', name: '欧泊', en: 'Opal', f: 'SiO₂ · nH₂O', mohs: 6, mohsTxt: '5.5–6.5', n: 1.45, disp: 0, maxF: 12, opal: true, mult: 25, grindMul: 3,
+    pal: ['#6d6a64', '#a9a49a', '#d8d2c6', '#efeae0', '#ffffff'],
+    rock: ['#5a412e', '#74563d', '#8c6c4f'], caust: ['#ff8fb0', '#9ff0c0', '#8fc8ff'], ui: '#3aa79c' },
+  diamond: { group: 'diamond', name: '钻石', en: 'Diamond', f: 'C', mohs: 10, mohsTxt: '10', n: 2.417, disp: .044, maxF: 57, shape: 'round',
+    pal: ['#3a3d4a', '#767c8d', '#c0c7d6', '#eef2f9', '#ffffff'], fire: ['#ff6fae', '#ffd84d', '#5fe3ff', '#a77bff'],
+    rock: ['#787a83', '#8f929a', '#a7aab1'], caust: ['#ff7fbf', '#ffe066', '#6fe3ff', '#b48bff'], ui: '#7a8296', swing: 22 },
+};
+// opal has no facets; what the stone is worth depends on the play-of-color you crack open
+const OPAL = [
+  { p: .35, q: .6, dens: 0, base: '#cfc6b4' },
+  { p: .40, q: 1.4, dens: .55, base: '#e3e8ea' },
+  { p: .17, q: 2.0, dens: .7, base: '#a9c3cf' },
+  { p: .08, q: 3.5, dens: .85, base: '#1f2433' },
+];
+function rollOpal() { let r = Math.random(); for (let i = 0; i < OPAL.length; i++) { if ((r -= OPAL[i].p) < 0) return i; } return 0; }
+const gemLabel = g => g.t === 'opal' && g.v != null ? L().opalName[g.v] : gn(g.t);
+const SHOP = [
+  { k: 'fluorite', price: 15, buys: ['fluorite'] },
+  { k: 'emerald', price: 400, buys: ['emerald'] },
+  { k: 'corundum', price: 6000, buys: ['ruby', 'sapphire'] },
+  { k: 'opal', price: 25000, buys: ['opal'] },
+  { k: 'diamond', price: 250000, buys: ['diamond'] },
+];
+const UPS = [
+  { k: 'tool', max: 30, cost: l => 20 * 2.2 ** l, show: () => true,
+    desc: l => tr('upTool', fmt(rockClick(l)), fmt(grindClick(l))) },
+  { k: 'wheel', max: 30, cost: l => 60 * 2.4 ** l, show: () => S.total >= 25,
+    desc: l => l ? tr('upWheelOn', fmt(autoGrind(l))) : tr('upWheelOff') },
+  { k: 'polish', max: 30, cost: l => 150 * 3 ** l, show: () => S.total >= 120,
+    desc: l => tr('upPolish', fmt(1.25 ** l)) },
+  { k: 'slots', max: 6, cost: l => 80 * 3.2 ** l, show: () => S.cases.length >= 2 || S.total >= 60,
+    desc: () => tr('upSlots', S.slots) },
+  { k: 'lamp', max: 30, cost: l => 400 * 3 ** l, show: () => S.cases.length >= 2,
+    desc: l => tr('upLamp', fmt(1.3 ** l)) },
+  { k: 'oil', max: 4, cost: l => 300 * 3 ** l, show: () => S.bought.emerald > 0,
+    desc: l => tr('upOil', (crackChance(l) * 100).toFixed(1)) },
+  { k: 'dust', max: 1, cost: () => 60000, show: () => S.total >= 40000,
+    desc: l => l ? tr('upDustOn') : tr('upDustOff') },
+];
+const OUTLINE = '#1c1922';
+
+/* ---------- state ---------- */
+const fresh = () => ({
+  light: 0, total: 0, bench: null, cases: [], slots: 3,
+  up: { tool: 0, wheel: 0, polish: 0, lamp: 0, oil: 0, dust: 0 },
+  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0 },
+  lastAngle: {}, seen: {}, ended: false, seed: 7, t: Date.now(),
+  tut: { taps: 0, grinds: 0, placed: 0, upgraded: 0, said: 0 },
+  unlocked: {},
+});
+let S = fresh();
+const KEY = 'canguang-v1';
+
+/* ---------- formulas ---------- */
+const fres0 = n => ((n - 1) / (n + 1)) ** 2;
+const rockClick = (l = S.up.tool) => 4 * 1.6 ** l;
+const grindClick = (l = S.up.tool) => 6 * 1.6 ** l;
+const autoGrind = (l = S.up.wheel) => l ? 3 * l * 1.4 ** l : 0;
+const crackChance = (l = S.up.oil) => 0.15 * 0.5 ** l;
+const facetNeed = b => GEMS[b.t].mohs ** 2 * 0.8 * (1 + 0.05 * b.facets) * (b.t === 'diamond' && !S.up.dust ? 5 : 1) * (GEMS[b.t].grindMul || 1);
+const rockHP = t => GEMS[t].mohs ** 2 * 1.2;
+const sapphireBonus = () => 1 + 0.08 * S.cases.filter(g => g.t === 'sapphire').length;
+function gemRate(g, inCase) {
+  const G = GEMS[g.t];
+  if (!g.facets) return 0;
+  return 40 * fres0(G.n) * g.facets * (1 + 20 * G.disp) * (g.q || 1) * 1.25 ** S.up.polish
+    * (G.mult || 1) * (inCase ? 1.3 ** S.up.lamp : 1) * (g.t === 'ruby' ? 1.3 : 1) * sapphireBonus();
+}
+const caseRate = () => S.cases.reduce((a, g) => a + gemRate(g, true), 0);
+const benchRate = () => S.bench && (S.bench.stage === 'facet' || S.bench.stage === 'done') ? gemRate(S.bench, false) : 0;
+const totalRate = () => caseRate() + benchRate();
+const priceOf = k => {
+  const s = SHOP.find(x => x.k === k);
+  if (k === 'fluorite' && S.bought.fluorite === 0) return 0;
+  return s.price * 1.6 ** Math.max(0, S.bought[k] - (k === 'fluorite' ? 1 : 0));
+};
+function fmt(n) {
+  if (!isFinite(n)) return '∞';
+  if (n < 10) return (Math.round(n * 10) / 10).toString();
+  if (n < 1e4) return Math.floor(n).toLocaleString('en-US');
+  if (LANG === 'en') {
+    for (const [d, u] of [[1e12, 'T'], [1e9, 'B'], [1e6, 'M'], [1e3, 'K']]) if (n >= d) { const v = n / d; return v.toFixed(v < 10 ? 2 : v < 100 ? 1 : 0) + u; }
+  }
+  if (n < 1e8) return (n / 1e4).toFixed(n < 1e5 ? 2 : 1) + '万';
+  if (n < 1e12) return (n / 1e8).toFixed(n < 1e9 ? 2 : 1) + '亿';
+  return (n / 1e12).toFixed(2) + '万亿';
+}
+
+/* ---------- optics: 2D cross-section ray trace with Fresnel ---------- */
+function fresnel(n1, n2, i) {
+  const s = n1 / n2 * Math.sin(i);
+  if (s >= 1) return 1;
+  const t = Math.asin(s), ci = Math.cos(i), ct = Math.cos(t);
+  const rs = ((n1 * ci - n2 * ct) / (n1 * ci + n2 * ct)) ** 2;
+  const rp = ((n1 * ct - n2 * ci) / (n1 * ct + n2 * ci)) ** 2;
+  return (rs + rp) / 2;
+}
+function trace(n, thetaDeg) {
+  const h = Math.tan(thetaDeg * Math.PI / 180);
+  const segs = [
+    { a: [-1, 0], b: [1, 0], nrm: [0, 1], top: true },
+    { a: [-1, 0], b: [0, -h], nrm: norm([-h, -1]) },
+    { a: [1, 0], b: [0, -h], nrm: norm([h, -1]) },
+  ];
+  const paths = [], RAYS = 10, R0 = fres0(n);
+  let returned = 0;
+  for (let r = 0; r < RAYS; r++) {
+    const x0 = -0.9 + 1.8 * (r + 0.5) / RAYS;
+    let p = [x0, 0], d = [0, -1], E = 1 - R0, last = 0;
+    paths.push({ k: 'in', pts: [[x0, 0.75], [x0, 0]], e: 1 });
+    for (let bounce = 0; bounce < 12 && E > 0.02; bounce++) {
+      let best = null;
+      segs.forEach((s, si) => {
+        if (si === last) return;
+        const t = hit(p, d, s.a, s.b);
+        if (t != null && (!best || t < best.t)) best = { t, si };
+      });
+      if (!best) break;
+      const s = segs[best.si], q = [p[0] + d[0] * best.t, p[1] + d[1] * best.t];
+      paths.push({ k: 'inside', pts: [p, q], e: E });
+      const cosi = d[0] * s.nrm[0] + d[1] * s.nrm[1];
+      const i = Math.acos(Math.min(1, Math.abs(cosi)));
+      const R = fresnel(n, 1, i), out = E * (1 - R);
+      if (out > 0.002) {
+        const st = Math.min(1, n * Math.sin(i)), ct = Math.sqrt(1 - st * st);
+        let tv = [d[0] - cosi * s.nrm[0], d[1] - cosi * s.nrm[1]];
+        const tl = Math.hypot(tv[0], tv[1]) || 1; tv = [tv[0] / tl, tv[1] / tl];
+        const od = [tv[0] * st + s.nrm[0] * ct, tv[1] * st + s.nrm[1] * ct];
+        if (s.top) returned += out;
+        paths.push({ k: s.top ? 'out' : 'leak', pts: [q, [q[0] + od[0] * 0.7, q[1] + od[1] * 0.7]], e: out, dir: od });
+      }
+      d = [d[0] - 2 * cosi * s.nrm[0], d[1] - 2 * cosi * s.nrm[1]];
+      E *= R; p = q; last = best.si;
+    }
+  }
+  const score = Math.min(1, returned / RAYS / ((1 - R0) * (1 - R0)));
+  return { score, paths, h };
+}
+function norm(v) { const l = Math.hypot(v[0], v[1]); return [v[0] / l, v[1] / l]; }
+function hit(p, d, a, b) {
+  const ex = b[0] - a[0], ey = b[1] - a[1];
+  const den = d[0] * ey - d[1] * ex;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((a[0] - p[0]) * ey - (a[1] - p[1]) * ex) / den;
+  const u = ((a[0] - p[0]) * d[1] - (a[1] - p[1]) * d[0]) / den;
+  return t > 1e-6 && u >= -1e-6 && u <= 1 + 1e-6 ? t : null;
+}
+const qualityOf = score => 0.5 + 1.5 * score;
+
+/* ---------- pixel rendering: each cut is a real faceted mesh, one facet id per cuttable face ---------- */
+const SW = 128, SH = 112, GCX = 64, GCY = 56, GR = 34;
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const hash2 = (x, y, s) => { const v = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return v - Math.floor(v); };
+const rgbCache = {};
+function rgb(hex) {
+  if (rgbCache[hex]) return rgbCache[hex];
+  const n = parseInt(hex.slice(1), 16);
+  return (rgbCache[hex] = [n >> 16 & 255, n >> 8 & 255, n & 255]);
+}
+const sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+const cross3 = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const norm3 = a => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+const LIGHT = norm3([-0.45, 0.75, 0.55]);
+
+// ring outlines in the x/z plane
+const RINGS = {
+  ellipse: (rx, rz) => (i, k, r) => { const a = 2 * Math.PI * (i + (r.rot || 0)) / k; return [rx * r.s * Math.cos(a), rz * r.s * Math.sin(a)]; },
+  octagon: (a, b, c) => (i, k, r) => {
+    const P = [[a, b - c], [a - c, b], [-a + c, b], [-a, b - c], [-a, -b + c], [-a + c, -b], [a - c, -b], [a, -b + c]];
+    return [P[i][0] * r.s, P[i][1] * r.s];
+  },
+};
+const CUTS = {
+  fluorite: { octa: true, pitch: 0.38 },
+  emerald: { k: 8, ring: RINGS.octagon(1.12, 0.74, 0.24), rings: [{ y: .4, s: .62 }, { y: 0, s: 1 }, { y: -.36, s: .6 }], culet: -.6, pitch: 0.55 },
+  ruby: { k: 8, ring: RINGS.ellipse(1.04, 0.88), rings: [{ y: .36, s: .55 }, { y: .2, s: .86, rot: .5 }, { y: .02, s: 1 }, { y: -.4, s: .55, rot: .5 }], culet: -.82, pitch: 0.5 },
+  diamond: { k: 14, ring: RINGS.ellipse(1, 1), rings: [{ y: .4, s: .56 }, { y: .24, s: .84, rot: .5 }, { y: .04, s: 1 }, { y: -.46, s: .5, rot: .5 }], culet: -.98, pitch: 0.5 },
+};
+CUTS.sapphire = CUTS.ruby;
+CUTS.opal = { dome: true, pitch: 0.62 };
+const meshCache = {};
+function getMesh(t) {
+  if (meshCache[t]) return meshCache[t];
+  const C = CUTS[t], V = [], F = [];
+  const tri = (a, b, c, id) => F.push({ v: [a, b, c], id });
+  let nF = 0, VN = null;
+  if (C.dome) {
+    // cabochon: half ellipsoid on a flat base, with smooth vertex normals for per-pixel shading
+    const k = 18, rx = 1.05, rz = 0.86, H = 0.62, phis = [0, 0.42, 0.8, 1.16];
+    const R = phis.map(ph => { const idx = []; for (let i = 0; i < k; i++) { const a = 2 * Math.PI * i / k; idx.push(V.length); V.push([rx * Math.cos(ph) * Math.cos(a), H * Math.sin(ph), rz * Math.cos(ph) * Math.sin(a)]); } return idx; });
+    const top = V.length; V.push([0, H, 0]);
+    const bot = V.length; V.push([0, 0, 0]);
+    for (let r = 0; r < R.length - 1; r++) { const A = R[r], B = R[r + 1]; for (let i = 0; i < k; i++) { const j = (i + 1) % k; tri(A[i], A[j], B[j], 0); tri(A[i], B[j], B[i], 0); } }
+    const L = R[R.length - 1];
+    for (let i = 0; i < k; i++) { const j = (i + 1) % k; tri(L[i], L[j], top, 0); tri(R[0][j], R[0][i], bot, 0); }
+    VN = V.map(p => p === V[bot] ? [0, -1, 0] : norm3([p[0] / (rx * rx), p[1] / (H * H), p[2] / (rz * rz)]));
+    nF = 1;
+  } else if (C.octa) {
+    [[1, 0, 0], [-1, 0, 0], [0, 1.15, 0], [0, -1.15, 0], [0, 0, 1], [0, 0, -1]].forEach(p => V.push(p.map(x => x * 0.95)));
+    const eq = [0, 4, 1, 5];
+    for (let i = 0; i < 4; i++) tri(2, eq[i], eq[(i + 1) % 4], nF++);
+    for (let i = 0; i < 4; i++) tri(3, eq[i], eq[(i + 1) % 4], nF++);
+  } else {
+    const k = C.k;
+    const R = C.rings.map(r => { const idx = []; for (let i = 0; i < k; i++) { const [x, z] = C.ring(i, k, r); idx.push(V.length); V.push([x, r.y, z]); } return idx; });
+    const tc = V.length; V.push([0, C.rings[0].y, 0]);
+    for (let i = 0; i < k; i++) tri(tc, R[0][i], R[0][(i + 1) % k], 0);
+    nF = 1;
+    for (let r = 0; r < R.length - 1; r++) {
+      const A = R[r], B = R[r + 1];
+      for (let i = 0; i < k; i++) { const j = (i + 1) % k; tri(A[i], A[j], B[j], nF); tri(A[i], B[j], B[i], nF); nF++; }
+    }
+    const cu = V.length; V.push([0, C.culet, 0]);
+    const L = R[R.length - 1];
+    for (let i = 0; i < k; i++) tri(L[i], L[(i + 1) % k], cu, nF++);
+  }
+  // centre the mesh vertically, then wind every face outward
+  let lo = Infinity, hi = -Infinity;
+  V.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); });
+  const mid = (lo + hi) / 2;
+  V.forEach(p => { p[1] -= mid; });
+  F.forEach(f => {
+    const [a, b, c] = f.v.map(i => V[i]);
+    const n = cross3(sub3(b, a), sub3(c, a)), cen = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
+    if (dot3(n, cen) < 0) f.v.reverse();
+  });
+  // grind order: table first, then scattered over the whole stone so progress is visible from any side
+  const rank = new Array(nF).fill(0), order = Array.from({ length: nF - 1 }, (_, i) => i + 1), rr = mulberry32(nF * 31);
+  for (let i = order.length - 1; i > 0; i--) { const j = Math.floor(rr() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; }
+  order.forEach((id, i) => { rank[id] = i + 1; });
+  return (meshCache[t] = { V, VN, F, nF, rank, pitch: C.pitch });
+}
+
+function inRock(x, y, seed) {
+  const a = Math.atan2(y, x);
+  const r = 1.3 * (1 + 0.045 * Math.sin(3 * a + seed % 6) + 0.03 * Math.sin(5 * a + seed % 4));
+  return (x * x) / (r * r) + (y * y) / (r * r * 0.9) <= 1;
+}
+const rockCache = new Map();
+function rockLayer(g) {
+  const key = g.t + g.seed;
+  let L = rockCache.get(key);
+  if (L) return L;
+  if (rockCache.size > 20) rockCache.clear();
+  L = new Int8Array(SW * SH).fill(-1);
+  const step = 1 / GR;
+  for (let py = 0; py < SH; py++) for (let px = 0; px < SW; px++) {
+    const x = (px + .5 - GCX) / GR, y = (py + .5 - GCY) / GR;
+    if (!inRock(x, y, g.seed)) continue;
+    const edge = !inRock(x + step, y, g.seed) || !inRock(x - step, y, g.seed) || !inRock(x, y + step, g.seed) || !inRock(x, y - step, g.seed);
+    let idx = 3;
+    if (!edge) {
+      const nz = hash2(Math.floor(px / 4), Math.floor(py / 4), g.seed % 97);
+      idx = 1;
+      if (nz > 0.8) idx = 0; else if (nz < 0.12) idx = 2;
+      if (x + y > 0.9 && nz > 0.4) idx = 0;
+      if (x + y < -1.0 && nz < 0.6) idx = 2;
+    }
+    L[py * SW + px] = idx;
+  }
+  rockCache.set(key, L);
+  return L;
+}
+
+const gemCv = document.createElement('canvas'); gemCv.width = SW; gemCv.height = SH;
+const gemCx = gemCv.getContext('2d');
+const gemImg = gemCx.createImageData(SW, SH);
+const idBuf = new Int16Array(SW * SH), cutBuf = new Uint8Array(SW * SH);
+function shadeFacet(G, n, id, seed) {
+  const h = hash2(id, 3.7, seed % 53);
+  const d = Math.max(0, dot3(n, LIGHT));
+  const rz = 2 * dot3(n, LIGHT) * n[2] - LIGHT[2];
+  const spec = Math.pow(Math.max(0, rz), 18);
+  if (spec > 0.55) return { c: G.pal[4], spec };
+  if (G.fire && spec > 0.12) {
+    const u = n[0] * 2.3 + n[1] * 3.1 + h; return { c: G.fire[Math.floor((u - Math.floor(u)) * 4)], spec };
+  }
+  const L = 0.2 + 0.5 * d + 0.3 * Math.sin(9 * n[0] + 7 * n[1] + h * 6.28) + (h - .5) * .2;
+  const pal = G.alt && h < .4 ? G.alt : G.pal;
+  return { c: pal[Math.max(0, Math.min(3, Math.floor(L * 4)))], spec };
+}
+function renderGem(g, stage, reveal, yaw) {
+  const G = GEMS[g.t], M = getMesh(g.t);
+  if (G.opal) return renderOpal(g, stage, reveal, yaw);
+  const cutN = stage === 'facet' || stage === 'done' ? g.facets : 0;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(M.pitch), sp = Math.sin(M.pitch);
+  const P = M.V.map(([x, y, z]) => {
+    const x1 = x * cy + z * sy, z1 = -x * sy + z * cy;
+    return [x1, y * cp - z1 * sp, y * sp + z1 * cp];
+  });
+  const d = gemImg.data; d.fill(0); idBuf.fill(-1);
+  const sparks = [];
+  for (const f of M.F) {
+    const [a, b, c] = f.v.map(i => P[i]);
+    const n = norm3(cross3(sub3(b, a), sub3(c, a)));
+    if (n[2] <= 0.0001) continue;
+    const isCut = M.rank[f.id] < cutN;
+    let col;
+    if (isCut) {
+      const s = shadeFacet(G, n, f.id, g.seed);
+      col = s.c;
+      if (s.spec > 0.55) sparks.push([Math.round(GCX + (a[0] + b[0] + c[0]) / 3 * GR), Math.round(GCY - (a[1] + b[1] + c[1]) / 3 * GR)]);
+    } else {
+      const sn = norm3([(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3]);
+      const l = Math.max(0, dot3(sn, LIGHT));
+      col = G.pal[l > .6 ? 3 : l > .25 ? 2 : 1];
+    }
+    const [r, gg, bb] = rgb(col);
+    const ax = GCX + a[0] * GR, ay = GCY - a[1] * GR, bx = GCX + b[0] * GR, by = GCY - b[1] * GR, qx = GCX + c[0] * GR, qy = GCY - c[1] * GR;
+    const x0 = Math.max(0, Math.floor(Math.min(ax, bx, qx))), x1 = Math.min(SW - 1, Math.ceil(Math.max(ax, bx, qx)));
+    const y0 = Math.max(0, Math.floor(Math.min(ay, by, qy))), y1 = Math.min(SH - 1, Math.ceil(Math.max(ay, by, qy)));
+    const area = (bx - ax) * (qy - ay) - (by - ay) * (qx - ax);
+    if (Math.abs(area) < 1e-6) continue;
+    const sg = area > 0 ? 1 : -1;
+    for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+      const X = px + .5, Y = py + .5;
+      const w0 = ((bx - X) * (qy - Y) - (by - Y) * (qx - X)) * sg;
+      const w1 = ((qx - X) * (ay - Y) - (qy - Y) * (ax - X)) * sg;
+      const w2 = ((ax - X) * (by - Y) - (ay - Y) * (bx - X)) * sg;
+      if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+      const o = py * SW + px;
+      idBuf[o] = f.id; cutBuf[o] = isCut ? 1 : 0;
+      d[o * 4] = r; d[o * 4 + 1] = gg; d[o * 4 + 2] = bb; d[o * 4 + 3] = 255;
+    }
+  }
+  finishGem(g, G, stage, reveal);
+  return sparks;
+}
+function finishGem(g, G, stage, reveal) {
+  const d = gemImg.data;
+  // light seams between facets, dark silhouette like the video
+  const seam = rgb(G.pal[3]), out = rgb(OUTLINE);
+  for (let py = 0; py < SH; py++) for (let px = 0; px < SW; px++) {
+    const o = py * SW + px, id = idBuf[o];
+    if (id < 0) continue;
+    const l = px > 0 ? idBuf[o - 1] : -1, rr = px < SW - 1 ? idBuf[o + 1] : -1, u = py > 0 ? idBuf[o - SW] : -1, dn = py < SH - 1 ? idBuf[o + SW] : -1;
+    let c = null;
+    if (l < 0 || rr < 0 || u < 0 || dn < 0) c = out;
+    else if ((rr !== id && (cutBuf[o] || cutBuf[o + 1])) || (dn !== id && (cutBuf[o] || cutBuf[o + SW]))) c = seam;
+    if (c) { d[o * 4] = c[0]; d[o * 4 + 1] = c[1]; d[o * 4 + 2] = c[2]; }
+  }
+  if (stage === 'rock') {
+    const L = rockLayer(g), rad = reveal * 1.25 * GR, rc = G.rock.map(rgb);
+    for (let o = 0; o < SW * SH; o++) {
+      const k = L[o]; if (k < 0) continue;
+      const px = o % SW, py = (o / SW) | 0;
+      if (idBuf[o] >= 0 && Math.hypot(px + .5 - GCX - 0.05 * GR, py + .5 - GCY + 0.05 * GR) < rad) continue;
+      const c = k === 3 ? out : rc[k];
+      d[o * 4] = c[0]; d[o * 4 + 1] = c[1]; d[o * 4 + 2] = c[2]; d[o * 4 + 3] = 255;
+    }
+  }
+  gemCx.putImageData(gemImg, 0, 0);
+}
+const OPAL_FIRE = ['#ff4f6a', '#ff9a3c', '#ffe14d', '#5fe08a', '#3fd6e0', '#4f7dff', '#a35cff'].map(rgb);
+function renderOpal(g, stage, reveal, yaw) {
+  const G = GEMS[g.t], M = getMesh(g.t), OP = OPAL[g.v || 0];
+  const pf = stage === 'facet' || stage === 'done' ? g.facets / G.maxF : 0;
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(M.pitch), sp = Math.sin(M.pitch);
+  const rot = ([x, y, z]) => { const x1 = x * cy + z * sy, z1 = -x * sy + z * cy; return [x1, y * cp - z1 * sp, y * sp + z1 * cp]; };
+  const P = M.V.map(rot), N = M.VN.map(rot);
+  const d = gemImg.data; d.fill(0); idBuf.fill(-1); cutBuf.fill(0);
+  const base = rgb(stage === 'rock' ? '#cfc6b4' : OP.base);
+  const shades = [0.68, 0.86, 1.04].map(f => base.map(c => Math.min(255, c * f)));
+  const white = [255, 255, 255];
+  for (const f of M.F) {
+    const [ia, ib, ic] = f.v, a = P[ia], b = P[ib], c = P[ic];
+    if (cross3(sub3(b, a), sub3(c, a))[2] <= 0.0001) continue;
+    const ax = GCX + a[0] * GR, ay = GCY - a[1] * GR, bx = GCX + b[0] * GR, by = GCY - b[1] * GR, qx = GCX + c[0] * GR, qy = GCY - c[1] * GR;
+    const area = (bx - ax) * (qy - ay) - (by - ay) * (qx - ax);
+    if (Math.abs(area) < 1e-6) continue;
+    const sg = area > 0 ? 1 : -1, A = Math.abs(area);
+    const x0 = Math.max(0, Math.floor(Math.min(ax, bx, qx))), x1 = Math.min(SW - 1, Math.ceil(Math.max(ax, bx, qx)));
+    const y0 = Math.max(0, Math.floor(Math.min(ay, by, qy))), y1 = Math.min(SH - 1, Math.ceil(Math.max(ay, by, qy)));
+    for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+      const X = px + .5, Y = py + .5;
+      const w0 = ((bx - X) * (qy - Y) - (by - Y) * (qx - X)) * sg / A;
+      const w1 = ((qx - X) * (ay - Y) - (qy - Y) * (ax - X)) * sg / A;
+      const w2 = ((ax - X) * (by - Y) - (ay - Y) * (bx - X)) * sg / A;
+      if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+      const n = norm3([0, 1, 2].map(i => N[ia][i] * w0 + N[ib][i] * w1 + N[ic][i] * w2));
+      const o3 = [0, 1, 2].map(i => M.V[ia][i] * w0 + M.V[ib][i] * w1 + M.V[ic][i] * w2);
+      const l = Math.max(0, dot3(n, LIGHT));
+      let col = shades[l > .6 ? 2 : l > .25 ? 1 : 0];
+      if (OP.dens > 0 && pf > 0) {
+        // patches are fixed to the stone; their hue follows the viewing angle, so colours roll as it turns
+        const h = hash2(Math.floor((o3[0] + 2) * 3.2) + Math.floor((o3[2] + 2) * 3.2) * 17.3, Math.floor((o3[1] + 2) * 4), g.seed % 89);
+        if (h < OP.dens * pf) {
+          let u = h * 7.3 + n[0] * 1.6 + n[1] * 1.1 + n[2] * 0.7; u -= Math.floor(u);
+          const fc = OPAL_FIRE[Math.floor(u * 7)];
+          col = l > .2 ? fc : fc.map(v => v * 0.75);
+        }
+      }
+      if (pf > 0.3 && 2 * dot3(n, LIGHT) * n[2] - LIGHT[2] > 0.94) col = white;
+      const o = py * SW + px;
+      idBuf[o] = 0;
+      d[o * 4] = col[0]; d[o * 4 + 1] = col[1]; d[o * 4 + 2] = col[2]; d[o * 4 + 3] = 255;
+    }
+  }
+  finishGem(g, G, stage, reveal);
+  return [];
+}
+
+const CW = 84, CH = 28;
+const caustCv = document.createElement('canvas'); caustCv.width = CW; caustCv.height = CH;
+const caustCx = caustCv.getContext('2d');
+const caustImg = caustCx.createImageData(CW, CH);
+let shadowRGB = [184, 187, 192];
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  const v = cs.getPropertyValue('--shadow').trim();
+  if (/^#[0-9a-f]{6}$/i.test(v)) shadowRGB = rgb(v.toLowerCase());
+}
+// every target canvas gets its own staging canvases: Safari may resolve drawImage from a canvas lazily,
+// so a staging canvas shared between the bench and the case would show whichever gem was rendered last
+function scratch(ctx, key, w, h) {
+  const t = ctx.canvas, bag = t._stage || (t._stage = {});
+  if (!bag[key]) { const c = document.createElement('canvas'); c.width = w; c.height = h; bag[key] = c; }
+  return bag[key];
+}
+function drawCaustic(ctx, G, power, time, sx, sy) {
+  const d = caustImg.data, core = rgb('#fbfaf2');
+  const blobs = power > 0 ? G.caust.map((c, j) => ({
+    x: Math.cos(time * 0.5 + j * 2.4) * (0.12 + G.disp * 5),
+    y: Math.sin(time * 0.4 + j * 1.7) * 0.18,
+    r: 0.28 + 0.42 * power * (1 - j * 0.08), c: rgb(c),
+  })) : [];
+  for (let j = 0; j < CH; j++) for (let i = 0; i < CW; i++) {
+    const u = (i + .5 - CW / 2) / (CW / 2), v = (j + .5 - CH / 2) / (CH / 2), o = (j * CW + i) * 4;
+    if (u * u + v * v > 1) { d[o + 3] = 0; continue; }
+    let c = shadowRGB;
+    for (const b of blobs) { const du = (u - b.x) / b.r, dv = (v - b.y) / (b.r * 1.15); if (du * du + dv * dv < 1) { c = b.c; break; } }
+    if (power > 0) {
+      const a = Math.atan2(v, u), rr = (0.12 + 0.22 * power) * (1 + 0.15 * Math.sin(a * 5 + time * 1.3));
+      if (Math.hypot(u * 1.0, v * 0.8) < rr) c = core;
+    }
+    d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+  }
+  const sc = scratch(ctx, 'caustic', CW, CH);
+  sc.getContext('2d').putImageData(caustImg, 0, 0);
+  ctx.drawImage(sc, Math.round(sx - CW / 2), Math.round(sy - CH / 2));
+}
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function drawScene(ctx, g, stage, reveal, time, particles) {
+  const G = GEMS[g.t];
+  ctx.clearRect(0, 0, 128, 150);
+  const power = stage === 'facet' || stage === 'done' ? Math.min(1, g.facets / G.maxF * Math.min(1, (g.q || 1) / 1.6) + 0.08) : stage === 'angle' ? angleGlow * 0.9 : 0;
+  drawCaustic(ctx, G, power, time, 72, 132);
+  const bob = reduced ? 0 : Math.round(Math.sin(time * 1.6 + g.seed) * 1.2);
+  // finished gems spin on their own; unfinished ones sway a little so they still read as 3D
+  const base = (g.seed % 628) / 100;
+  const yaw = reduced ? base : stage === 'done' ? base + time * 0.7 : base + 0.35 * Math.sin(time * 0.6);
+  const sparks = renderGem(g, stage, reveal, yaw);
+  const sg = scratch(ctx, 'gem', SW, SH);
+  sg.getContext('2d').putImageData(gemImg, 0, 0);
+  ctx.drawImage(sg, 0, bob);
+  if (power > 0) {
+    ctx.fillStyle = '#ffffff';
+    sparks.slice(0, 8).forEach(([x, y], i) => {
+      if (((time * 2 + i * 0.37) % 1) < 0.6) { ctx.fillRect(x, y + bob - 1, 1, 3); ctx.fillRect(x - 1, y + bob, 3, 1); }
+    });
+  }
+  if (particles) for (const p of particles) { ctx.fillStyle = p.c; ctx.fillRect(Math.round(p.x), Math.round(p.y), p.s, p.s); }
+}
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const benchCv = $('benchCv'), benchCx = benchCv.getContext('2d');
+const angleCv = $('angleCv'), angleCx = angleCv.getContext('2d');
+let particles = [];
+let tickerTimer = 0;
+function say(msg, flash = true) {
+  const t = $('ticker'); t.textContent = msg;
+  t.classList.toggle('flash', flash); clearTimeout(tickerTimer);
+  tickerTimer = setTimeout(() => t.classList.remove('flash'), 2500);
+}
+function fact(k) { if (!S.seen[k]) { S.seen[k] = 1; say(L().facts[k]); } }
+
+function buildShop() {
+  $('shop').innerHTML = SHOP.map(s => `
+    <div class="row" data-k="${s.k}">
+      <div class="row-main">
+        <div class="row-title"><span class="nm"></span><span class="sub"></span></div>
+        <div class="row-desc"></div>
+      </div>
+      <div class="row-btns">${s.buys.map((g, i) => `<button data-buy="${g}">${L().shop[s.k].buy[i]} · <b></b></button>`).join('')}</div>
+    </div>`).join('');
+  $('ups').innerHTML = UPS.map(u => `
+    <div class="row" data-k="${u.k}" hidden>
+      <div class="row-main">
+        <div class="row-title"><span class="nm">${L().up[u.k]}</span><span class="sub"></span><span class="nudge-note"></span></div>
+        <div class="row-desc"></div>
+      </div>
+      <div class="row-btns"><button data-up="${u.k}">${tr('upBtn')}<b></b></button></div>
+    </div>`).join('');
+}
+const upLevel = k => k === 'slots' ? S.slots - 3 : S.up[k];
+function renderSide() {
+  const busy = !!S.bench;
+  $('shopNote').textContent = busy ? tr('shopBusy') : '';
+  let lockedShown = false;
+  for (const s of SHOP) {
+    const row = $('shop').querySelector(`[data-k="${s.k}"]`);
+    const unlocked = isUnlocked(s);
+    if (unlocked && !S.unlocked[s.k]) { S.unlocked[s.k] = 1; if (s.k !== 'fluorite') announceUnlock(s.k, row); }
+    row.hidden = !unlocked && lockedShown;
+    if (!unlocked) lockedShown = true;
+    row.classList.toggle('locked', !unlocked);
+    row.querySelector('.nm').textContent = unlocked ? L().shop[s.k].title : '？？？';
+    row.querySelector('.sub').textContent = unlocked ? L().shop[s.k].sub : '';
+    row.querySelector('.row-desc').textContent = unlocked ? L().shop[s.k].desc : tr('locked', fmt(s.price * 0.25));
+    const p = priceOf(s.k);
+    row.querySelectorAll('button').forEach(b => {
+      b.hidden = !unlocked;
+      b.querySelector('b').textContent = p === 0 ? tr('free') : fmt(p);
+      b.disabled = busy || S.light < p;
+    });
+  }
+  const nudgeKey = S.tut.placed && !S.tut.upgraded
+    ? (UPS.find(u => (u.show() || upLevel(u.k) > 0) && upLevel(u.k) < u.max && S.light >= u.cost(upLevel(u.k))) || {}).k : null;
+  if (nudgeKey && !S.tut.said) { S.tut.said = 1; say(tr('workshopSay')); }
+  for (const u of UPS) {
+    const row = $('ups').querySelector(`[data-k="${u.k}"]`);
+    const l = upLevel(u.k);
+    row.hidden = !(u.show() || l > 0);
+    if (row.hidden) continue;
+    const maxed = l >= u.max, c = u.cost(l);
+    // classList.toggle treats an undefined force as 'flip', so the flag must be a real boolean
+    const oilNudge = !!(u.k === 'oil' && S.tut.cracked && !S.up.oil);
+    row.classList.toggle('nudge', u.k === nudgeKey || oilNudge);
+    row.querySelector('.nudge-note').textContent = tr(oilNudge ? 'nudgeOil' : 'nudge');
+    row.querySelector('.sub').textContent = u.max === 1 ? (l ? tr('owned') : '') : `Lv ${l}`;
+    row.querySelector('.row-desc').textContent = u.desc(l);
+    const b = row.querySelector('button');
+    b.disabled = maxed || S.light < c;
+    b.firstChild.textContent = tr(maxed ? 'maxed' : u.max === 1 ? 'buyBtn' : 'upBtn');
+    b.querySelector('b').textContent = maxed ? '' : fmt(c);
+  }
+}
+
+function renderBench() {
+  const b = S.bench, bench = $('bench');
+  const G = b ? GEMS[b.t] : null;
+  bench.style.setProperty('--gem', G ? G.ui : 'var(--ink)');
+  $('gName').textContent = G ? gemLabel(b) : tr('bench');
+  $('gEn').textContent = G ? (LANG === 'zh' ? G.en : '') : tr('benchEmpty');
+  $('gFormula').textContent = G ? G.f : '';
+  $('gSpecs').textContent = G
+    ? tr('specs', G.mohsTxt, G.n.toFixed(3), G.disp.toFixed(3)) + (b.q ? tr('specsQ', b.q.toFixed(2)) : '')
+    : '';
+  // the plate around the specimen: number, figure caption, callouts and the hand-tint wash
+  $('specimen').classList.toggle('empty', !G);
+  $('plateNo').textContent = tr('plate', G ? ['I', 'II', 'III', 'IV', 'V'][['fluorite', 'emerald', 'corundum', 'opal', 'diamond'].indexOf(G.group)] : '—');
+  $('benchFig').textContent = G ? tr('fig', Math.min(S.cases.length + 1, S.slots)) : '';
+  if (G) {
+    $('cHard').textContent = G.mohsTxt; $('cRI').textContent = G.n.toFixed(3); $('cDisp').textContent = G.disp.toFixed(3);
+    $('cQ').textContent = b.q ? '×' + b.q.toFixed(2) : '—';
+  }
+  $('wash').style.opacity = b && (b.stage === 'facet' || b.stage === 'done') ? (0.12 + 0.36 * b.facets / G.maxF).toFixed(3) : 0;
+  // a sticky bench taller than the window would hide its own bottom (the angle scale, the buttons);
+  // pin it by the bottom edge instead whenever it does not fit
+  bench.style.top = Math.min(16, innerHeight - bench.offsetHeight - 16) + 'px';
+  bench.classList.toggle('angling', !!b && b.stage === 'angle');
+  benchCv.classList.toggle('idle', !b || b.stage === 'done');
+  const cracking = b && performance.now() < crackUntil;
+  $('tapTip').classList.toggle('warn', !!cracking);
+  if (cracking) { $('tapTip').hidden = false; $('tapTip').textContent = tr('crackTip'); }
+  const showTap = !cracking && b && !S.tut.placed && ((b.stage === 'rock' && S.tut.taps < 3) || (b.stage === 'facet' && S.tut.grinds < 4));
+  if (!cracking) $('tapTip').hidden = !showTap;
+  if (showTap) $('tapTip').textContent = tr(b.stage === 'rock' ? 'tapRock' : 'tapGrind');
+  $('anglePanel').hidden = !b || b.stage !== 'angle';
+  const bar = $('barWrap'), fill = $('barFill'), txt = $('barText'), hint = $('hint');
+  bar.hidden = !b || b.stage === 'angle';
+  let actions = '';
+  if (!b) {
+    hint.textContent = tr('hEmpty'); txt.textContent = ''; bar.hidden = true;
+  } else if (b.stage === 'rock') {
+    hint.textContent = tr('hRock');
+    fill.style.width = (100 * (1 - b.hp / b.hpMax)) + '%';
+    txt.textContent = tr('rockBar', Math.max(0, Math.ceil(b.hp)), Math.ceil(b.hpMax));
+  } else if (b.stage === 'angle') {
+    hint.textContent = tr('hAngle');
+    txt.textContent = '';
+  } else if (b.stage === 'facet') {
+    const need = facetNeed(b);
+    hint.textContent = tr(G.opal ? 'hPolish' : 'hGrind') + tr('hRate', fmt(gemRate(b)));
+    if (b.t === 'emerald' && S.up.oil < 4) {
+      // the fix for cracking sits right under the stone, not only in the workshop
+      const l = S.up.oil, c = UPS.find(u => u.k === 'oil').cost(l), pct = v => (v * 100).toFixed(v < 0.1 ? 1 : 0) + '%';
+      hint.textContent += tr('hCrack', pct(crackChance(l)));
+      actions = `<button id="oilBtn" class="${S.tut.cracked && !l ? 'pulse' : ''}"${S.light < c ? ' disabled' : ''}>${tr('oilBtn', pct(crackChance(l)), pct(crackChance(l + 1)))}<b>${fmt(c)}</b></button>`;
+    }
+    fill.style.width = (100 * b.prog / need) + '%';
+    txt.textContent = tr(G.opal ? 'barPolish' : 'barFacet', b.facets, G.maxF) + tr(G.opal ? 'barThisPass' : 'barThisFacet', fmt(b.prog), fmt(need));
+  } else {
+    fill.style.width = '100%';
+    const r = gemRate(b, true);
+    txt.textContent = tr(G.opal ? 'barPolish' : 'barFacet', G.maxF, G.maxF);
+    let label = tr('place'), note = tr('placeNote', fmt(r));
+    if (S.cases.length >= S.slots) {
+      const w = weakest();
+      if (gemRate(S.cases[w], true) < r) { label = tr('swap', gemLabel(S.cases[w])); note = tr('swapNote', gemLabel(S.cases[w])); }
+      else { label = tr('sell', fmt(r * 120)); note = tr('sellNote'); }
+    }
+    hint.textContent = tr('done') + note;
+    actions = `<button class="primary${S.tut.placed ? '' : ' pulse'}" id="placeBtn">${label}</button>`;
+  }
+  if ($('benchActions').dataset.html !== actions) {
+    $('benchActions').innerHTML = actions; $('benchActions').dataset.html = actions;
+    const pb = $('placeBtn'); if (pb) pb.onclick = place;
+    const ob = $('oilBtn'); if (ob) ob.onclick = () => upgrade('oil');
+    if (pb && !S.tut.placed) pb.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+  }
+}
+const weakest = () => S.cases.reduce((w, g, i) => gemRate(g, true) < gemRate(S.cases[w], true) ? i : w, 0);
+
+let caseKey = '';
+function renderCase() {
+  const key = S.slots + '|' + S.cases.map(g => g.t + g.seed).join(',');
+  $('caseInfo').textContent = tr('caseInfo', S.cases.length, S.slots, fmt(caseRate()));
+  if (key !== caseKey) {
+    caseKey = key;
+    let html = '';
+    for (let i = 0; i < S.slots; i++) {
+      const g = S.cases[i];
+      html += g
+        ? `<div class="slot" style="--gem:${GEMS[g.t].ui}"><canvas width="128" height="150" data-i="${i}"></canvas><span class="cap"><span class="fig">${tr('fig', i + 1)}</span><span class="sn">${gemLabel(g)}</span></span><span class="sr" data-r="${i}"></span></div>`
+        : `<div class="slot empty">${tr('slotEmpty')}</div>`;
+    }
+    $('caseGrid').innerHTML = html;
+  }
+  S.cases.forEach((g, i) => { const el = $('caseGrid').querySelector(`[data-r="${i}"]`); if (el) el.textContent = tr('slotRate', fmt(gemRate(g, true)), g.q.toFixed(2)); });
+}
+
+/* ---------- angle game: a needle sweeps 25°–60° at constant speed ---------- */
+const A_MIN = 25, A_MAX = 60;
+const needle = { th: A_MIN, dir: 1, lockedAt: 0 };
+let lastTap = 0;
+function swingNeedle(dt) {
+  const b = S.bench; if (!b || b.stage !== 'angle') { hum(0); return; }
+  needle.th += needle.dir * GEMS[b.t].swing * dt;
+  if (needle.th > A_MAX) { needle.th = 2 * A_MAX - needle.th; needle.dir = -1; }
+  if (needle.th < A_MIN) { needle.th = 2 * A_MIN - needle.th; needle.dir = 1; }
+  angleGlow = drawAngle() || 0;
+  hum(angleGlow);
+  const now = angleGlow > 0.7, tip = $('gaugeTip');
+  if (tip.classList.contains('now') !== now) {
+    tip.classList.toggle('now', now);
+    tip.textContent = tr(now ? 'gaugeNow' : 'gaugeIdle');
+  }
+}
+// the simple view: a strip where the good angles glow, and a needle sweeping across it
+let angleGlow = 0, crackUntil = 0;
+const zoneCache = {};
+function zoneOf(G) {
+  if (zoneCache[G.n]) return zoneCache[G.n];
+  const z = [];
+  for (let a = A_MIN; a < A_MAX; a += 0.25) z.push(trace(G.n, a + 0.125).score);
+  return (zoneCache[G.n] = z);
+}
+function drawGauge(G, theta) {
+  const cv = $('gaugeCv'), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const cs = getComputedStyle(document.documentElement), ink = cs.getPropertyValue('--ink').trim(), muted = cs.getPropertyValue('--muted').trim();
+  const x0 = 14, x1 = w - 14, base = 30, GX = a => x0 + (a - A_MIN) / (A_MAX - A_MIN) * (x1 - x0);
+  // hand-tint wash over the angles that keep light
+  c.fillStyle = G.ui;
+  const z = zoneOf(G);
+  z.forEach((s, i) => {
+    if (s < 0.12) return;
+    const a = A_MIN + i * 0.25;
+    c.globalAlpha = Math.min(0.85, s * 0.85); c.fillRect(GX(a), base - 12, GX(a + 0.25) - GX(a) + 0.6, 12);
+  });
+  c.globalAlpha = 1;
+  // engraved scale: a baseline, a tick every degree, a longer one every five
+  c.strokeStyle = ink; c.lineWidth = 1; c.beginPath();
+  c.moveTo(x0, base + .5); c.lineTo(x1, base + .5);
+  for (let a = A_MIN; a <= A_MAX; a++) { const x = Math.round(GX(a)) + .5; c.moveTo(x, base); c.lineTo(x, base + (a % 5 === 0 ? 7 : 3)); }
+  c.stroke();
+  c.fillStyle = muted; c.font = 'italic 11px ' + cs.getPropertyValue('--f-num'); c.textAlign = 'center';
+  for (let a = A_MIN; a <= A_MAX; a += 5) c.fillText(a + '°', GX(a), base + 19);
+  const best = z.indexOf(Math.max(...z));
+  let lo = best, hi = best;
+  while (lo > 0 && z[lo - 1] > 0.6) lo--;
+  while (hi < z.length - 1 && z[hi + 1] > 0.6) hi++;
+  c.fillStyle = ink; c.font = '12px ' + cs.getPropertyValue('--f-body');
+  c.fillText(tr('cvGood'), Math.min(x1 - 24, Math.max(x0 + 24, GX(A_MIN + (lo + hi + 1) * 0.125))), base - 16);
+  // the needle: a fine engraved line with a small head
+  const x = GX(theta);
+  c.strokeStyle = ink; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, base - 14); c.lineTo(x, base + 8); c.stroke();
+  c.beginPath(); c.moveTo(x, base - 13); c.lineTo(x - 4, base - 21); c.lineTo(x + 4, base - 21); c.closePath(); c.fill();
+  c.textAlign = 'left';
+}
+function drawAngle() {
+  const b = S.bench; if (!b || b.stage !== 'angle') return;
+  const G = GEMS[b.t], theta = needle.th, res = trace(G.n, theta);
+  const crit = Math.asin(1 / G.n) * 180 / Math.PI, q = qualityOf(res.score);
+  $('rTheta').textContent = theta.toFixed(1) + '°';
+  $('rCrit').textContent = crit.toFixed(1) + '°';
+  $('rScore').textContent = Math.round(res.score * 100) + '%';
+  $('rQ').textContent = '×' + q.toFixed(2);
+  drawGauge(G, theta);
+  if (!$('angleMore').open) return res.score;
+  const dpr = devicePixelRatio || 1, w = angleCv.clientWidth, hgt = angleCv.clientHeight;
+  if (angleCv.width !== Math.round(w * dpr)) { angleCv.width = Math.round(w * dpr); angleCv.height = Math.round(hgt * dpr); }
+  const c = angleCx; c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, hgt);
+  const cs = getComputedStyle(document.documentElement);
+  const ink = cs.getPropertyValue('--ink').trim(), muted = cs.getPropertyValue('--muted').trim(), bad = cs.getPropertyValue('--bad').trim();
+  const gh = 44, sh = hgt - gh;
+  const s = Math.min(w / 2.9, sh / 2.55), ox = w / 2, oy = sh * 0.36;
+  const X = x => ox + x * s, Y = y => oy - y * s;
+  c.beginPath(); c.moveTo(X(-1), Y(0)); c.lineTo(X(1), Y(0)); c.lineTo(X(0), Y(-res.h)); c.closePath();
+  c.fillStyle = G.pal[3] + '40'; c.fill(); c.strokeStyle = ink; c.lineWidth = 1.5; c.stroke();
+  // angle marker
+  c.beginPath(); c.arc(X(-1), Y(0), 26, 0, theta * Math.PI / 180); c.strokeStyle = muted; c.lineWidth = 1; c.stroke();
+  c.fillStyle = muted; c.font = '11px ' + cs.getPropertyValue('--f-body'); c.fillText('θ', X(-1) + 30, Y(0) + 14);
+  c.lineCap = 'round';
+  for (const p of res.paths) {
+    const [a, z] = p.pts;
+    if (p.k === 'out') {
+      const spread = G.disp * 6;
+      ['#ff5c8a', '#ffd23f', '#4fc8ff'].forEach((col, i) => {
+        const ang = Math.atan2(p.dir[1], p.dir[0]) + (i - 1) * spread;
+        c.beginPath(); c.moveTo(X(a[0]), Y(a[1]));
+        c.lineTo(X(a[0] + Math.cos(ang) * 0.7), Y(a[1] + Math.sin(ang) * 0.7));
+        c.strokeStyle = col; c.globalAlpha = Math.min(1, 0.25 + p.e * 1.2); c.lineWidth = 2; c.stroke();
+      });
+      continue;
+    }
+    c.beginPath(); c.moveTo(X(a[0]), Y(a[1])); c.lineTo(X(z[0]), Y(z[1]));
+    if (p.k === 'in') { c.strokeStyle = ink; c.globalAlpha = 0.35; c.lineWidth = 1; c.setLineDash([3, 4]); }
+    else if (p.k === 'leak') { c.strokeStyle = bad; c.globalAlpha = Math.min(1, 0.2 + p.e); c.lineWidth = 1.5; c.setLineDash([2, 3]); }
+    else { c.strokeStyle = G.ui; c.globalAlpha = Math.min(1, 0.2 + p.e); c.lineWidth = 2; c.setLineDash([]); }
+    c.stroke(); c.setLineDash([]);
+  }
+  c.globalAlpha = 1;
+  c.fillStyle = muted; c.font = '11px ' + cs.getPropertyValue('--f-body');
+  c.fillText(tr('cvTop'), X(1) + 6, Y(0) + 4);
+  c.fillStyle = bad; c.fillText(tr('cvLeak'), 8, sh - 6);
+  // gauge: 25°–60° strip, critical angle tick, swinging needle
+  const gx0 = 16, gx1 = w - 16, gy = sh + 14, GX = a => gx0 + (a - A_MIN) / (A_MAX - A_MIN) * (gx1 - gx0);
+  c.fillStyle = cs.getPropertyValue('--line').trim(); c.fillRect(gx0, gy, gx1 - gx0, 8);
+  if (crit >= A_MIN) { c.fillStyle = muted; c.fillRect(GX(crit) - 1, gy - 4, 2, 16); c.fillText(tr('cvCrit'), GX(crit) + 4, gy - 3); }
+  c.fillStyle = G.ui; c.globalAlpha = 0.25 + 0.75 * res.score; c.fillRect(gx0, gy, GX(theta) - gx0, 8); c.globalAlpha = 1;
+  c.fillStyle = ink; c.beginPath(); c.moveTo(GX(theta), gy + 9); c.lineTo(GX(theta) - 6, gy + 20); c.lineTo(GX(theta) + 6, gy + 20); c.closePath(); c.fill();
+  c.fillStyle = muted; c.fillText(A_MIN + '°', gx0, gy + 32); c.textAlign = 'right'; c.fillText(A_MAX + '°', gx1, gy + 32); c.textAlign = 'left';
+  return res.score;
+}
+function lockAngle() {
+  const b = S.bench; if (!b || b.stage !== 'angle') return;
+  if (performance.now() - needle.lockedAt < 1200) return;
+  const theta = needle.th, res = trace(GEMS[b.t].n, theta);
+  b.q = qualityOf(res.score); b.angle = theta; S.lastAngle[b.t] = theta;
+  b.stage = 'facet'; b.prog = 0;
+  if (res.score > 0.85) { sfx('clink', 1.5, 0.9); sfx('ping', 2, 0.6, 0.08); }
+  else if (res.score > 0.5) sfx('clink', 1, 0.7);
+  else sfx('chip', 0.6, 0.8);
+  const pct = Math.round(res.score * 100);
+  say(tr(res.score > 0.85 ? 'lockGreat' : res.score > 0.5 ? 'lockOk' : 'lockBad', pct));
+  renderBench();
+}
+
+/* ---------- actions ---------- */
+function newGem(t) {
+  S.seed = (S.seed * 1103515245 + 12345) % 2147483647;
+  return { t, seed: S.seed, stage: 'rock', hp: rockHP(t), hpMax: rockHP(t), facets: 0, prog: 0, q: 0 };
+}
+function buy(t) {
+  const grp = GEMS[t].group, p = priceOf(grp);
+  if (S.bench || S.light < p) return;
+  S.light -= p; S.bought[grp]++;
+  S.bench = newGem(t);
+  sfx('chip', 0.5, 0.8);
+  fact(t);
+  renderAll();
+}
+function upgrade(k) {
+  const u = UPS.find(x => x.k === k), l = upLevel(k), c = u.cost(l);
+  if (l >= u.max || S.light < c) return;
+  S.light -= c;
+  if (k === 'slots') S.slots++; else S.up[k]++;
+  S.tut.upgraded = 1;
+  sfx('ping', 1.2, 0.6, 0.05); sfx('ping', 1.5, 0.6, 0.13);
+  renderAll();
+}
+// saves from before the first-run guide existed belong to players who already know the ropes
+function ensureTut() {
+  if (!S.tut || S.tut.taps == null) S.tut = S.cases.length || S.bought.emerald ? { taps: 9, grinds: 9, placed: 1, upgraded: 1, said: 1 } : fresh().tut;
+}
+const isUnlocked = s => S.bought[s.k] > 0 || s.k === 'fluorite' || S.total >= s.price * 0.25;
+// saves from before this feature already know their stones; don't replay those unlocks
+function seedUnlocked() { S.unlocked = {}; SHOP.forEach(s => { if (isUnlocked(s)) S.unlocked[s.k] = 1; }); }
+const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond' };
+let unlockGem = null, unlockTimer = 0, unlockRow = null;
+function announceUnlock(k, row) {
+  const t = GROUP_GEM[k], G = GEMS[t];
+  unlockGem = { t, seed: 7, facets: G.maxF, q: 1.6, v: 1 };
+  unlockRow = row;
+  const box = $('unlock');
+  box.style.setProperty('--gem', G.ui);
+  $('unlockName').textContent = tr('unlockName', L().shop[k].title);
+  $('unlockSub').textContent = tr('plate', ['I', 'II', 'III', 'IV', 'V'][SHOP.findIndex(s => s.k === k)]) + ' · ' + L().shop[k].sub;
+  $('unlockGo').textContent = tr('unlockGo');
+  box.hidden = false; box.style.animation = 'none'; void box.offsetWidth; box.style.animation = '';
+  row.style.setProperty('--gem', G.ui); row.classList.remove('fresh'); void row.offsetWidth; row.classList.add('fresh');
+  [0, 4, 7, 9].forEach((s, i) => sfx('clink', 0.9 * penta(s), 0.7, i * 0.1));
+  clearTimeout(unlockTimer); unlockTimer = setTimeout(() => { box.hidden = true; }, 4500);
+}
+// camera follow: show the slot the gem went into, then hand the view back unless the player moved it
+let followTimer = 0;
+function followToSlot(i) {
+  if (i == null) return;
+  const el = $('caseGrid').children[i]; if (!el) return;
+  const back = scrollY, r = el.getBoundingClientRect(), smooth = reduced ? 'auto' : 'smooth';
+  el.classList.remove('arrive'); void el.offsetWidth; el.classList.add('arrive');
+  setTimeout(() => el.classList.remove('arrive'), 2400);
+  if (r.top >= 0 && r.bottom <= innerHeight) return;
+  el.scrollIntoView({ block: 'center', behavior: smooth });
+  let moved = false;
+  const mark = () => { moved = true; };
+  ['wheel', 'touchstart', 'keydown'].forEach(ev => addEventListener(ev, mark, { once: true, passive: true }));
+  clearTimeout(followTimer);
+  followTimer = setTimeout(() => {
+    ['wheel', 'touchstart', 'keydown'].forEach(ev => removeEventListener(ev, mark));
+    if (!moved) scrollTo({ top: back, behavior: smooth });
+  }, 2300);
+}
+function place() {
+  const b = S.bench; if (!b || b.stage !== 'done') return;
+  S.tut.placed = 1;
+  const g = { t: b.t, seed: b.seed, facets: b.facets, q: b.q, v: b.v };
+  const r = gemRate(g, true);
+  let slot;
+  if (S.cases.length < S.slots) { S.cases.push(g); slot = S.cases.length - 1; }
+  else {
+    const w = weakest();
+    if (gemRate(S.cases[w], true) < r) { say(tr('retired', gemLabel(S.cases[w])), false); S.cases[w] = g; slot = w; }
+    else { const v = r * 120; S.light += v; S.total += v; say(tr('sold', fmt(v))); sfx('clink', 1.2, 0.7); sfx('clink', 1.5, 0.6, 0.12); S.bench = null; renderAll(); return; }
+  }
+  sfx('clink', 0.8, 0.9);
+  S.bench = null;
+  if (g.t === 'diamond' && !S.ended) { S.ended = true; showEnding(g); }
+  renderAll();
+  followToSlot(slot);
+}
+function showEnding(g) {
+  const res = trace(GEMS.diamond.n, S.lastAngle.diamond || 40.75);
+  $('endA').textContent = tr('endA', Math.round(res.score * 100));
+  $('endB').textContent = tr('endB', fmt(gemRate(g, true)));
+  $('endC').textContent = tr('endC', fmt(S.total));
+  $('ending').hidden = false;
+  [0, 2, 4, 5, 7, 9, 10].forEach((s, i) => sfx('clink', 0.7 * penta(s), 0.8, 0.4 + i * 0.16));
+}
+function spawn(kind, n) {
+  const b = S.bench, G = GEMS[b.t];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = 0.6 + Math.random() * 1.6;
+    particles.push({
+      x: GCX + Math.cos(a) * 30, y: GCY + Math.sin(a) * 26, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1.2,
+      life: 0.6 + Math.random() * 0.4, s: kind === 'rock' ? 2 : 1,
+      c: kind === 'rock' ? G.rock[Math.floor(Math.random() * 3)] : (Math.random() < .5 ? '#ffffff' : G.pal[3]),
+    });
+  }
+}
+function addGrind(x) {
+  const b = S.bench;
+  b.prog += x;
+  let guard = 0;
+  while (b.stage === 'facet' && guard++ < 200) {
+    const need = facetNeed(b);
+    if (b.prog < need) break;
+    b.prog -= need;
+    if (b.t === 'emerald' && Math.random() < crackChance()) {
+      b.prog = 0; sfx('crack', 0.9, 0.8); S.tut.cracked = 1; crackUntil = performance.now() + 2200;
+      say(tr(S.up.oil < 4 ? 'crackMsg' : 'crackMsgMax')); break;
+    }
+    b.facets++;
+    const maxF = GEMS[b.t].maxF;
+    if (b.facets >= maxF) {
+      b.stage = 'done'; b.prog = 0;
+      [0, 2, 4, 7].forEach((s, i) => sfx('clink', 0.8 * penta(s), 0.8, i * 0.09));
+    } else if (performance.now() - snd.lastPing > 90) {
+      snd.lastPing = performance.now();
+      sfx('ping', 0.8 * penta(Math.floor(b.facets / maxF * 9)), 0.7);
+    }
+  }
+}
+function hitBench() {
+  const b = S.bench; if (!b) return;
+  // a tap that is part of a rapid chipping burst must not set the angle by accident
+  const now = performance.now(), rapid = now - lastTap < 350;
+  lastTap = now;
+  if (b.stage === 'rock') {
+    b.hp -= rockClick(); spawn('rock', 6); S.tut.taps++;
+    if (b.hp > 0) sfx('chip', jit(0.15), 0.6);
+    else breakRock(true);
+  } else if (b.stage === 'angle') {
+    if (!rapid) lockAngle();
+    return;
+  } else if (b.stage === 'facet') {
+    grindSfx();
+    addGrind(grindClick()); spawn('spark', 3); S.tut.grinds++;
+  }
+  renderBench();
+}
+// when the angle step opens, scroll just enough that the gem and the angle scale are both on screen;
+// only if the player tapped the stone or is looking at the bench, so the auto grinder never yanks the page
+function bringAngleIntoView(tapped) {
+  const r = benchCv.getBoundingClientRect();
+  if (!tapped && !(r.bottom > 0 && r.top < innerHeight)) return;
+  requestAnimationFrame(() => $('anglePanel').scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' }));
+}
+function breakRock(tapped) {
+  const b = S.bench;
+  if (GEMS[b.t].opal) {
+    const v = rollOpal();
+    b.hp = 0; b.v = v; b.q = OPAL[v].q; b.stage = 'facet'; b.prog = 0;
+    sfx('smash', 1, 0.9);
+    if (v >= 2) [0, 2, 4, 7, 9].forEach((s, i) => sfx('clink', 0.9 * penta(s), 0.7, 0.2 + i * 0.08));
+    else if (v === 1) sfx('clink', 1.2, 0.6, 0.15);
+    else sfx('chip', 0.6, 0.7, 0.15);
+    say(L().opalMsg[v]); renderBench(); return;
+  }
+  b.hp = 0; b.stage = 'angle';
+  needle.th = A_MIN; needle.dir = 1; needle.lockedAt = performance.now();
+  sfx('smash', 1, 0.9); sfx('clink', 0.6, 0.5, 0.15);
+  fact('angle');
+  renderBench(); drawAngle();
+  bringAngleIntoView(tapped);
+}
+
+/* ---------- sound: CC0 clips from Freesound, decoded on first interaction ---------- */
+const SFX_SRC = {"chip": "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", "smash": "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", "grind": "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", "ping": "SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYyLjEyLjEwMgAAAAAAAAAAAAAA//s4wAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAAEAAAEOABmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmaZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZmZzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzP////////////////////////////////8AAAAATGF2YzYyLjI4AAAAAAAAICIAAAAAJAKwAAAAAAAABDg9iHz1AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//s4xAAAChgvGBSRgAGfrTG3EHACBAUEmLkYrFYrBAUChAxCHmAAAAIQuD4IAgCAIVg+D4PggCAIAgCYPg+D4PggCAIAgCZ9YPg+CAIAgCDvBAEAQ///+XBAMQQBMP4nBAMf8Th8fjcfjcfi4a+0SRgMAD3IDlfkyxngrEc9tBxk7Fh8bV+Nxu5opAc/40IDcMCOL89DjdjFfdDxYegvERbocpUz/yEUCQXY9ni2KhXejr/9mPcxDKGEBEIg7Gv/6f//Et8wcMADgfZfX1JWeHhnd2cjTYA0//s4xAUADBk7cfxlABF6sew8kZ244xIwLPBm0IX5EjD3IjyFR6PR6xzXRH9TCETTSWUNpO3W2jMxv73OWb/5ELLMnQ4KwHhaNZvXU1Wzn/V6UU1lKGGkJo9NVjkJSFjvoPhZLN+dJCL+Xdhtom7upu5W0igQyn4iZDyNPWbyb2lSkFhqlk1Iv/IcFDwVJfpBnfaGUPy+Vcq116o3NEBu1THOEYSnf///rOQ5TjNHY67GtYxEQfM6HqXElHfTpmPUoprr+iJVpvo48bVWioqqrK2sbIAnp1UF//s4xAaADAmBV+SM9oF/sCo8wZ24TRMt8QMso0QnuSzWOmSeOxdsZqVvvkYpHYPhuGM+h5Lx6CMq0jc1NW8zc550LDKnXZLBEJRFv/v20/Wzf/noqmrz1Q0iLY4d3trsUCK5qv/+U1KBYeaqZql7niAJk4eFp9Rl4uVFz8R9RyBo4kdh2B2zCl/9WBRGiw8jaSksOBZtqGKlAbrWpa9IqF3o6oSEsig20Vs+cpzNNan+9FZ/+ammaa0oExwnIKy/9BGJps//SOsqABJQThpQYABUNNmdDSlL//s4xAeADElfNaENN0kvsZ50MJp5+YxvUrfo4USjxgoCqhnUtY2u1y9fpcZj1XXX8MK5/saiVPbLY1P8KtJi76lq1XOqX67HsBEGYM1G44hGiZZ+IryUpS/qWrCommhNgkgrorE3wUGBAAaUhgIIAAWP8stLLLsn/9hfyI+0///mRfIyL3IzI8jIzA086Eaf////QjIj8u/7JISJMuHZ2LeNzco044+Li83///zRZbOzs5VrVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV", "clink": "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qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//s4xP+DEAF/BGxsbYmnGR+ByQ7Qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//s4xOwDCfh+/Efpq0G9EJtJvT3Yqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq", "crack": "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"};
+const snd = { ctx: null, master: null, buf: {}, on: true, hum: null, lastPing: 0 };
+try { snd.on = localStorage.getItem('canguang-sound') !== 'off'; } catch (e) {}
+function unlockAudio() {
+  if (!live()) return;
+  if (snd.ctx) { if (snd.ctx.state === 'suspended') snd.ctx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  snd.ctx = new AC();
+  snd.master = snd.ctx.createGain(); snd.master.gain.value = snd.on ? 0.7 : 0; snd.master.connect(snd.ctx.destination);
+  for (const [k, b64] of Object.entries(SFX_SRC)) {
+    const bin = atob(b64), arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    snd.ctx.decodeAudioData(arr.buffer).then(b => { snd.buf[k] = b; }).catch(() => {});
+  }
+}
+function sfx(k, rate = 1, gain = 1, delay = 0) {
+  const c = snd.ctx, b = snd.buf[k]; if (!c || !b || !snd.on) return;
+  const src = c.createBufferSource(), g = c.createGain();
+  src.buffer = b; src.playbackRate.value = rate; g.gain.value = gain;
+  src.connect(g).connect(snd.master); src.start(c.currentTime + delay);
+  return { src, g };
+}
+// grinding is one voice: a new click fades out the previous rub instead of stacking on it
+function grindSfx() {
+  const c = snd.ctx; if (!c) return;
+  if (snd.grind) { try { snd.grind.g.gain.setTargetAtTime(0, c.currentTime, 0.015); snd.grind.src.stop(c.currentTime + 0.08); } catch (e) {} }
+  snd.grind = sfx('grind', 0.95 * jit(0.08), 0.55);
+}
+const jit = a => 1 + (Math.random() * 2 - 1) * a;
+const PENTA = [1, 9 / 8, 5 / 4, 3 / 2, 5 / 3];
+const penta = i => PENTA[i % 5] * 2 ** Math.floor(i / 5);
+// a glassy drone during the angle game; it swells as more light comes back
+function hum(score) {
+  const c = snd.ctx; if (!c) return;
+  if (!snd.hum) {
+    if (!score) return;
+    const g = c.createGain(); g.gain.value = 0; g.connect(snd.master);
+    [660, 990, 1321].forEach((f, i) => {
+      const o = c.createOscillator(), og = c.createGain();
+      o.frequency.value = f; og.gain.value = [1, .45, .2][i];
+      o.connect(og).connect(g); o.start();
+    });
+    snd.hum = { g };
+  }
+  snd.hum.g.gain.setTargetAtTime(snd.on ? 0.07 * score * score : 0, c.currentTime, 0.04);
+}
+function renderSoundBtn() { const b = $('soundBtn'); b.textContent = tr(snd.on ? 'soundOn' : 'soundOff'); b.setAttribute('aria-pressed', String(snd.on)); }
+function setSound(on) {
+  snd.on = on; try { localStorage.setItem('canguang-sound', on ? 'on' : 'off'); } catch (e) {}
+  if (snd.master) snd.master.gain.value = on ? 0.7 : 0;
+  renderSoundBtn();
+}
+addEventListener('pointerdown', unlockAudio, true);
+addEventListener('keydown', unlockAudio, true);
+$('soundBtn').addEventListener('click', () => setSound(!snd.on));
+renderSoundBtn();
+
+/* ---------- loop ---------- */
+let last = performance.now(), uiAcc = 0, frame = 0, saveAcc = 0;
+function step(now) {
+  if (!live()) { try { snd.ctx && snd.ctx.close(); } catch (e) {} return; }
+  const dt = Math.min(5, (now - last) / 1000); last = now; frame++;
+  simulate(dt);
+  swingNeedle(Math.min(dt, 0.05));
+  const time = now / 1000;
+  if (frame % 60 === 1) readTheme();
+  particles = particles.filter(p => (p.life -= dt) > 0);
+  for (const p of particles) { p.x += p.vx; p.y += p.vy; p.vy += 0.12; }
+  const b = S.bench;
+  if (b) drawScene(benchCx, b, b.stage, b.stage === 'rock' ? 1 - b.hp / b.hpMax : 1, time, particles);
+  else { benchCx.clearRect(0, 0, 128, 150); }
+  if (unlockGem && !$('unlock').hidden) drawScene($('unlockCv').getContext('2d'), unlockGem, 'done', 1, time);
+  if (frame % 3 === 0) {
+    $('caseGrid').querySelectorAll('canvas').forEach(cv => {
+      const g = S.cases[+cv.dataset.i]; if (g) drawScene(cv.getContext('2d'), g, 'done', 1, time + g.seed % 10);
+    });
+  }
+  uiAcc += dt;
+  if (uiAcc > 0.12) { uiAcc = 0; renderTop(); renderSide(); renderBench(); renderCase(); }
+  saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; save(); }
+  requestAnimationFrame(step);
+}
+function simulate(dt) {
+  const r = totalRate();
+  S.light += r * dt; S.total += r * dt;
+  const b = S.bench, ag = autoGrind();
+  if (b && ag) {
+    if (b.stage === 'rock') { b.hp -= ag * 0.5 * dt; if (b.hp <= 0) breakRock(); }
+    else if (b.stage === 'facet') addGrind(ag * dt);
+  }
+}
+let lastLight = '';
+function renderTop() {
+  const s = fmt(S.light);
+  if (s !== lastLight) {
+    lastLight = s;
+    $('light').innerHTML = $('rhLight').innerHTML = [...s].map(ch => `<span class="${/[0-9A-Za-z]/.test(ch) ? 'd' : /[.,]/.test(ch) ? 'p' : 'w'}">${ch}</span>`).join('');
+  }
+  $('rate').textContent = $('rhRate').textContent = `+${fmt(totalRate())} ${tr('perSec')}`;
+}
+function renderAll() { renderTop(); renderSide(); renderBench(); renderCase(); }
+
+/* ---------- persistence ---------- */
+function save() { if (!live()) return; S.t = Date.now(); try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+function load() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  if (!data) return false;
+  S = Object.assign(fresh(), data, { up: Object.assign(fresh().up, data.up), bought: Object.assign(fresh().bought, data.bought) });
+  ensureTut();
+  if (!data.unlocked) seedUnlocked();
+  // no offline income: light only gathers while the page is open, so a forgotten tab never returns with an absurd balance
+  return true;
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) save(); });
+if ('IntersectionObserver' in window) new IntersectionObserver(([e]) => {
+  if (!live()) return;
+  const on = !e.isIntersecting && e.boundingClientRect.top < 0, rh = $('runhead');
+  rh.classList.toggle('on', on);
+  document.documentElement.style.setProperty('--rh', on ? rh.offsetHeight + 'px' : '0px');
+}).observe(document.querySelector('.meter .meter-row'));
+
+/* ---------- wiring ---------- */
+benchCv.addEventListener('pointerdown', e => { e.preventDefault(); hitBench(); });
+benchCv.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hitBench(); } });
+$('shop').addEventListener('click', e => { const b = e.target.closest('button[data-buy]'); if (b) buy(b.dataset.buy); });
+$('ups').addEventListener('click', e => { const b = e.target.closest('button[data-up]'); if (b) upgrade(b.dataset.up); });
+$('langBtn').addEventListener('click', () => {
+  LANG = LANG === 'zh' ? 'en' : 'zh';
+  try { localStorage.setItem('canguang-lang', LANG); } catch (e) {}
+  applyLang();
+});
+function applyLang() {
+  document.documentElement.lang = LANG === 'zh' ? 'zh-CN' : 'en';
+  document.title = tr('title');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', tr(el.dataset.i18nAria)));
+  $('langBtn').textContent = tr('langBtn');
+  $('gaugeTip').textContent = tr($('gaugeTip').classList.contains('now') ? 'gaugeNow' : 'gaugeIdle');
+  buildShop(); caseKey = ''; $('benchActions').dataset.html = '';
+  renderSoundBtn(); renderAll(); drawAngle();
+}
+$('unlockGo').addEventListener('click', () => {
+  $('unlock').hidden = true; clearTimeout(unlockTimer);
+  if (unlockRow) unlockRow.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
+});
+$('gaugeCv').addEventListener('pointerdown', e => { e.preventDefault(); lockAngle(); });
+$('angleMore').addEventListener('toggle', drawAngle);
+angleCv.addEventListener('pointerdown', e => { e.preventDefault(); lockAngle(); });
+addEventListener('keydown', e => {
+  if (!live()) return;
+  if (e.key !== ' ' || !S.bench || S.bench.stage !== 'angle') return;
+  if (e.target.closest && e.target.closest('button, input')) return;
+  e.preventDefault(); lockAngle();
+});
+$('endClose').addEventListener('click', () => { $('ending').hidden = true; });
+$('resetBtn').addEventListener('click', () => { $('resetConfirm').hidden = false; $('resetBtn').hidden = true; });
+$('resetNo').addEventListener('click', () => { $('resetConfirm').hidden = true; $('resetBtn').hidden = false; });
+$('resetYes').addEventListener('click', () => {
+  S = fresh(); try { localStorage.removeItem(KEY); } catch (e) {}
+  S.bought.fluorite = 1; S.bench = newGem('fluorite');
+  $('resetConfirm').hidden = true; $('resetBtn').hidden = false; caseKey = '';
+  say(tr('restart'), false); renderAll();
+});
+addEventListener('resize', drawAngle);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readTheme(); drawAngle(); });
+new MutationObserver(() => { readTheme(); drawAngle(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+function start(data) {
+  if (data && typeof data.light === 'number') { S = data; ensureTut(); if (!S.unlocked) seedUnlocked(); }
+  else if (!load()) {
+    S.bought.fluorite = 1; S.bench = newGem('fluorite');
+    say(tr('welcome'), false);
+  }
+  window.claude?.hot?.snapshot?.(() => S);
+  readTheme(); applyLang();
+  requestAnimationFrame(t => { last = t; step(t); });
+}
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</html>
