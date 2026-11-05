@@ -335,6 +335,9 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
   .goal { grid-row: 2; flex-wrap: wrap; gap: 3px 10px; }
   .goal-bar { flex-basis: 100%; }
   .specimen.empty .callouts { display: none; }
+  /* English tab names are long: tighter tracking, and the count drops to its own line */
+  html[lang="en"] .tabs button { letter-spacing: .02em; font-size: 14px; line-height: 1.2; }
+  html[lang="en"] .tabs button small { display: block; }
 
   .grid > .bench { grid-row: 2; gap: 6px; padding-block: 4px 8px; }
   .specimen { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 0; }
@@ -346,7 +349,7 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
   .callout b { font-size: 17px; }
   .callout .lead { order: -1; flex: none; width: 1px; height: 10px; min-width: 0; }
   .callouts .lead::after { left: -2px; right: auto; top: -2px; }
-  #benchCv { width: clamp(140px, calc((var(--appH, 100dvh) - 520px) * .853), 300px); max-width: 72vw; }
+  #benchCv { width: clamp(140px, calc((var(--appH, 100dvh) - 560px) * .853), 300px); max-width: 72vw; }
   .stage-box { margin-block: -6px -10px; }
   .hint { font-size: 14px; }
   .caption { column-gap: .4em; }
@@ -373,6 +376,8 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
   .caption > div:not(.gname) { display: none; }
   .stage-box { margin-block: -8px -4px; }
   .plate-in { grid-template-rows: auto minmax(0, auto) auto minmax(130px, 1fr); }
+  /* a finished gem needs its note and place button more than its property callouts */
+  .bench.finished .callouts { display: none; }
 }
 /* wide: the specimen keeps its leader-line callouts on the left; the tabs and their list fill the right column */
 @media (min-height: 560px) and (min-width: 861px) {
@@ -571,6 +576,7 @@ const I18N = {
     barFacet: (f, m) => `刻面 ${f} / ${m}`, barPolish: (f, m) => `抛光 ${f} / ${m}`,
     barThisFacet: (p, n) => ` · 这一面 ${p} / ${n}`, barThisPass: (p, n) => ` · 这一遍 ${p} / ${n}`,
     place: '放进展柜', placeNote: v => `放进展柜后每秒 ${v} 光。`,
+    lastSlot: '最后一个空位。之后新宝石更亮就换下最暗的。', caseRule: '满了以后，更亮的新宝石会换下最暗的那颗',
     swap: n => `换下最暗的${n}`, swapNote: n => `展柜满了。它比展柜里最暗的${n}亮，可以换下来。`,
     sell: v => `卖给收藏家 · ${v}`, sellNote: '展柜满了，它也不比里面的亮。可以卖掉换光，或者先扩容展柜。', done: '切好了。',
     caseInfo: (a, b, v) => `${a} / ${b} · 每秒 ${v} 光`, slotEmpty: '空位', slotRate: (v, q) => `${v}/秒 · ×${q}`,
@@ -639,6 +645,7 @@ const I18N = {
     barFacet: (f, m) => `Facets ${f} / ${m}`, barPolish: (f, m) => `Polish ${f} / ${m}`,
     barThisFacet: (p, n) => ` · this facet ${p} / ${n}`, barThisPass: (p, n) => ` · this pass ${p} / ${n}`,
     place: 'Put in the case', placeNote: v => `In the case it makes ${v} light per second.`,
+    lastSlot: 'Last free slot. After it, brighter gems replace the dimmest.', caseRule: 'when full, a brighter gem replaces the dimmest',
     swap: n => `Replace the dimmest ${n}`, swapNote: n => `The case is full. This one outshines the dimmest ${n}, so you can swap it in.`,
     sell: v => `Sell to a collector · ${v}`, sellNote: 'The case is full and this one is no brighter. Sell it for light, or add case slots first.', done: 'Finished. ',
     caseInfo: (a, b, v) => `${a} / ${b} · ${v} light/s`, slotEmpty: 'Empty', slotRate: (v, q) => `${v}/s · ×${q}`,
@@ -1284,6 +1291,7 @@ function renderBench() {
   // pin it by the bottom edge instead whenever it does not fit
   bench.style.top = Math.min(16, innerHeight - bench.offsetHeight - 16) + 'px';
   bench.classList.toggle('angling', !!b && b.stage === 'angle');
+  bench.classList.toggle('finished', !!b && b.stage === 'done');
   benchCv.classList.toggle('idle', !b);
   const cracking = b && performance.now() < crackUntil;
   $('tapTip').classList.toggle('warn', !!cracking);
@@ -1324,6 +1332,8 @@ function renderBench() {
     const r = gemRate(b, true);
     txt.textContent = tr(G.opal ? 'barPolish' : 'barFacet', G.maxF, G.maxF);
     let label = tr('place'), note = tr('placeNote', fmt(r));
+    // say what a full case does before it is full, so nobody fears losing a finished gem
+    if (S.cases.length === S.slots - 1) note = tr('lastSlot');
     if (S.cases.length >= S.slots) {
       const w = weakest();
       if (gemRate(S.cases[w], true) < r) { label = tr('swap', gemLabel(S.cases[w])); note = tr('swapNote', gemLabel(S.cases[w])); }
@@ -1360,7 +1370,7 @@ const weakest = () => S.cases.reduce((w, g, i) => gemRate(g, true) < gemRate(S.c
 let caseKey = '';
 function renderCase() {
   const key = S.slots + '|' + S.cases.map(g => g.t + g.seed).join(',');
-  $('caseInfo').textContent = tr('caseInfo', S.cases.length, S.slots, fmt(caseRate()));
+  $('caseInfo').textContent = tr('caseInfo', S.cases.length, S.slots, fmt(caseRate())) + (S.cases.length >= S.slots - 1 ? ' · ' + tr('caseRule') : '');
   if (key !== caseKey) {
     caseKey = key;
     let html = '';
