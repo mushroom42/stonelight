@@ -244,6 +244,9 @@ button b { font-family: var(--f-num); font-weight: 400; font-size: 15px; }
 .slot canvas { width: 100%; max-width: 124px; aspect-ratio: 128 / 150; image-rendering: pixelated; }
 .slot .wipe { margin-top: 6px; min-height: 32px; padding: 2px 12px; font-size: 13px; }
 .slot .wipe.off { visibility: hidden; }
+.orient-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.orient-key span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; background: var(--c); vertical-align: -1px; }
+.orient-key .on { color: var(--ink); text-decoration: underline 2px var(--c); text-underline-offset: 4px; }
 .slot .cap { display: flex; gap: .4em; align-items: baseline; padding-bottom: 2px; border-bottom: 2px solid var(--gem, var(--line)); }
 .slot .fig { font-family: var(--f-num); font-style: italic; font-size: 14px; color: var(--muted); }
 .slot .sn { font-family: var(--f-display); font-size: 15px; }
@@ -553,6 +556,7 @@ const I18N = {
       opal: { title: '欧泊原石', sub: 'SiO₂ · nH₂O · 硬度 5.5–6.5', desc: '不切刻面，只抛成弧面。敲开之前不知道是什么：可能是没有变彩的普通欧泊，也可能是黑欧泊。', buy: ['赌一块'] },
       diamond: { title: '钻石原石', sub: 'C · 硬度 10', desc: '57 个刻面，标准圆形明亮式。临界角只有 24.4°，光进去就很难漏出来。', buy: ['买一块'] },
       tourmaline: { title: '碧玺原石', sub: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄ · 硬度 7–7.5', desc: '33 个刻面。受热会带电、吸灰：放进展柜后射灯一照，它会慢慢蒙上灰变暗，点「擦灰」就亮回来。', buy: ['买一块'] },
+      tanzanite: { title: '坦桑石原石', sub: 'Ca₂Al₃(SiO₄)(Si₂O₇)O(OH) · 硬度 6–7', desc: '41 个刻面。三色性：换个方向看，分别是深蓝、红紫、黄绿。敲开后它会慢慢转，想要的颜色朝上时点一下。深蓝最亮，但要多磨掉一些原石。', buy: ['买一块'] },
     },
     free: '免费', shopBusy: '工作台空出来才能放下一块', locked: v => `累计收集 ${v} 光后出现`,
     facts: {
@@ -563,10 +567,12 @@ const I18N = {
       diamond: '钻石是纯碳，莫氏硬度 10。能磨它的只有钻石本身，所以切磨钻石用的是钻石粉。',
       tourmaline: '碧玺受热时，晶体两端会带上相反的电荷，能把炉灰吸过来，这叫热释电。1703 年荷兰人从锡兰把它带回欧洲，注意到的就是这一点。',
       pyro: '灰擦掉了。射灯一直烤着碧玺，它还会再吸灰。工坊里的「防尘罩」能让它积灰慢一些。',
+      tanzanite: '坦桑石的商业产地全世界只有一处：坦桑尼亚的梅勒拉尼山。它有三色性，从不同方向看颜色不同，所以下刀的方向决定了它正面看是蓝还是紫。',
+      heat: '大多数蓝色坦桑石都加热过：加热到几百摄氏度，黄绿和褐色调就褪掉了，剩下蓝和紫。',
       opal: '欧泊是含水的二氧化硅，里面堆着排列整齐的微小硅球。白光在硅球间衍射，才出现随角度变化的彩色斑块，这叫「变彩」。它是圆顶，底下没有尖角可以锁光，所以不用定角。',
       angle: '宝石底部的角度决定光能不能绕回来。角度对了，光在底部反射两次，再从顶上射出来，宝石就亮。钻石的好角度最宽，萤石最窄。',
     },
-    up: { tool: '錾子与砂盘', wheel: '自动磨盘', polish: '氧化铈抛光粉', slots: '展柜格位', lamp: '展柜射灯', oil: '浸油处理', dust: '钻石微粉', cover: '防尘罩' },
+    up: { tool: '錾子与砂盘', wheel: '自动磨盘', polish: '氧化铈抛光粉', slots: '展柜格位', lamp: '展柜射灯', oil: '浸油处理', dust: '钻石微粉', cover: '防尘罩', heat: '加热炉' },
     upTool: (a, b) => `每次点击：敲 ${a} · 磨 ${b}`, upWheelOn: a => `每秒自动研磨 ${a}`, upWheelOff: '工作台自己转起来，不点也在磨',
     upPolish: m => `所有宝石出光 ×1.25（当前 ×${m}）`, upSlots: n => `现在能放 ${n} 颗，最多 9 颗`,
     upLamp: m => `展柜里的宝石出光 ×1.3（当前 ×${m}）`, upOil: p => `祖母绿每磨一面的开裂几率：${p}%`,
@@ -576,6 +582,9 @@ const I18N = {
     goalLocked: a => `再收集 ${a} 光，出现新原石`, goalBuy: (n, a) => `再攒 ${a} 光就能买${n}`, goalReady: n => `${n}买得起了`,
     eta: t => ` · 约 ${t}`, etaS: n => `${n} 秒`, etaM: n => `${n} 分钟`, etaH: n => `${n} 小时`, upsReady: n => `${n} 项可买`,
     upCover: t => `碧玺积满灰要 ${t} 秒`, wipeBtn: '擦灰',
+    upHeatOff: '把坦桑石加热到几百 °C，去掉黄绿色调：黄绿方向会变成蓝紫。', upHeatOn: '已备好。坦桑石的黄绿方向变成蓝紫。',
+    tzName: ['深蓝坦桑石', '红紫坦桑石', '黄绿坦桑石', '蓝紫坦桑石'], tzColor: ['深蓝', '红紫', '黄绿', '蓝紫'], tzMore: ' · 多磨 40%',
+    hOrient: c => `坦桑石在慢慢转，${c}轮流朝上。想要的颜色朝上时点它。`, tapOrient: '颜色对了点我', tzPick: n => `选好了：${n}。接下来定角。`,
     nudge: '光可以花在这里', nudgeOil: '能防祖母绿开裂', workshopSay: '攒下的光可以在「工坊」里花掉。升级以后敲得更快、磨得更快。',
     specs: (h, n, d) => `硬度 ${h} · 折射率 ${n} · 色散 ${d}`, specsQ: q => ` · 品质 ×${q}`,
     hEmpty: '从「原石」里挑一块放上工作台。', hRock: '点石头，敲掉外面那层石皮。', rockBar: (a, b) => `石皮 ${a} / ${b}`,
@@ -626,6 +635,7 @@ const I18N = {
       opal: { title: 'Opal rough', sub: 'SiO₂ · nH₂O · hardness 5.5–6.5', desc: 'No facets, just a polished dome. You will not know what you have until it cracks open: plain common opal, or a black opal.', buy: ['Take a gamble'] },
       diamond: { title: 'Diamond rough', sub: 'C · hardness 10', desc: '57 facets in a round brilliant cut. Its critical angle is only 24.4°, so light that gets in has a hard time leaking out.', buy: ['Buy one'] },
       tourmaline: { title: 'Tourmaline rough', sub: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄ · hardness 7–7.5', desc: '33 facets. Warm it and it takes on a charge and pulls in dust: under the case spotlight it slowly greys over and dims. Tap “Dust it” to bring it back.', buy: ['Buy one'] },
+      tanzanite: { title: 'Tanzanite rough', sub: 'Ca₂Al₃(SiO₄)(Si₂O₇)O(OH) · hardness 6–7', desc: '41 facets. Trichroic: from different directions it looks deep blue, red-violet or yellow-green. Once it is open it slowly turns; tap when the colour you want faces up. Blue is brightest but costs more grinding.', buy: ['Buy one'] },
     },
     free: 'Free', shopBusy: 'Clear the workbench first', locked: v => `Appears after you have gathered ${v} light`,
     facts: {
@@ -636,10 +646,12 @@ const I18N = {
       diamond: 'Diamond is pure carbon, hardness 10. Only diamond can cut diamond, so diamonds are polished with diamond powder.',
       tourmaline: 'Warm a tourmaline and its two ends take opposite charges, strong enough to pull in ash from a fire. This is pyroelectricity. Dutch traders brought it from Ceylon in 1703 and noticed exactly that.',
       pyro: 'Dusted. The spotlight keeps warming the tourmaline, so it will gather dust again. A dust cover from the Workshop slows it down.',
+      tanzanite: 'Tanzanite is mined commercially in only one place: the Merelani Hills of Tanzania. It is trichroic, so the direction a cutter chooses decides whether it faces up blue or violet.',
+      heat: 'Most blue tanzanite has been heated: a few hundred degrees Celsius drives off the yellow-green and brown, leaving blue and violet.',
       opal: 'Opal is silica with water in it, packed with tiny spheres in neat rows. White light diffracts between them, making patches of color that shift as the stone turns. This is called play-of-color. An opal is a dome with no point underneath to trap light, so there is no angle to set.',
       angle: 'The angle at the bottom of a gem decides whether light comes back. Get it right and light bounces twice inside, then shoots out the top and the gem shines. Diamond has the widest sweet spot; fluorite has the narrowest.',
     },
-    up: { tool: 'Chisel & lap', wheel: 'Auto grinder', polish: 'Cerium oxide polish', slots: 'Case slots', lamp: 'Case spotlight', oil: 'Oil treatment', dust: 'Diamond powder', cover: 'Dust cover' },
+    up: { tool: 'Chisel & lap', wheel: 'Auto grinder', polish: 'Cerium oxide polish', slots: 'Case slots', lamp: 'Case spotlight', oil: 'Oil treatment', dust: 'Diamond powder', cover: 'Dust cover', heat: 'Heat treatment' },
     upTool: (a, b) => `Per tap: chip ${a} · grind ${b}`, upWheelOn: a => `Grinds ${a} per second on its own`, upWheelOff: 'The bench keeps grinding even when you do not tap',
     upPolish: m => `All gems shine ×1.25 (now ×${m})`, upSlots: n => `Holds ${n} now, up to 9`,
     upLamp: m => `Gems in the case shine ×1.3 (now ×${m})`, upOil: p => `Chance an emerald cracks per facet: ${p}%`,
@@ -649,6 +661,9 @@ const I18N = {
     goalLocked: a => `Gather ${a} more light to reveal a new stone`, goalBuy: (n, a) => `${a} more light to afford ${n}`, goalReady: n => `You can afford ${n}`,
     eta: t => ` · about ${t}`, etaS: n => `${n} s`, etaM: n => `${n} min`, etaH: n => `${n} h`, upsReady: n => `${n} ready`,
     upCover: t => `A tourmaline takes ${t} s to dust over`, wipeBtn: 'Dust it',
+    upHeatOff: 'Heat tanzanite to a few hundred °C to drive off the yellow-green: that direction turns blue-violet.', upHeatOn: 'Ready. Tanzanite’s yellow-green direction is now blue-violet.',
+    tzName: ['Blue tanzanite', 'Violet tanzanite', 'Yellow-green tanzanite', 'Blue-violet tanzanite'], tzColor: ['blue', 'violet', 'yellow-green', 'blue-violet'], tzMore: ' · 40% more grinding',
+    hOrient: c => `The tanzanite is turning: ${c} take turns facing up. Tap when the colour you want is on top.`, tapOrient: 'Tap on your colour', tzPick: n => `Chosen: ${n}. Now set the angle.`,
     nudge: 'Spend your light here', nudgeOil: 'Stops emerald cracks', workshopSay: 'You can spend light in the Workshop. Upgrades make you chip and grind faster.',
     specs: (h, n, d) => `Hardness ${h} · RI ${n} · Dispersion ${d}`, specsQ: q => ` · Quality ×${q}`,
     hEmpty: 'Pick a stone from Rough stones and put it on the bench.', hRock: 'Tap the stone to chip off the crust.', rockBar: (a, b) => `Crust ${a} / ${b}`,
@@ -701,6 +716,11 @@ const GEMS = {
   tourmaline: { group: 'tourmaline', name: '碧玺', en: 'Tourmaline', f: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄', mohs: 7.25, mohsTxt: '7–7.5', n: 1.62, disp: .017, maxF: 33, shape: 'step', mult: 18,
     pal: ['#053a3f', '#0b7480', '#19b3c2', '#7deef2', '#e9ffff'],
     rock: ['#4f5a58', '#66716e', '#7d8885'], caust: ['#5ff0f0', '#8dffc8'], ui: '#139aa8', swing: 12 },
+  // trichroic: one palette per direction (deep blue, red-violet, yellow-green, and blue-violet once heated)
+  tanzanite: { group: 'tanzanite', name: '坦桑石', en: 'Tanzanite', f: 'Ca₂Al₃(SiO₄)(Si₂O₇)O(OH)', mohs: 6.5, mohsTxt: '6–7', n: 1.69, disp: .02, maxF: 41, shape: 'oval', mult: 36,
+    pal: ['#2a0f4a', '#4d1f8a', '#7a3cc8', '#c39cff', '#f6eeff'],
+    pals: [['#0b1350', '#1b2a9a', '#3a4fd6', '#8f9cff', '#eef0ff'], ['#2a0f4a', '#4d1f8a', '#7a3cc8', '#c39cff', '#f6eeff'], ['#3a3a12', '#6b6b22', '#a3a03a', '#d6d27a', '#fbf9e0'], ['#16124f', '#2f2a9e', '#5450d8', '#a6a2ff', '#f0efff']],
+    rock: ['#5c5866', '#736e7e', '#8a8596'], caust: ['#8f9cff', '#c39cff'], ui: '#4b3cc8', swing: 14 },
 };
 // opal has no facets; what the stone is worth depends on the play-of-color you crack open
 const OPAL = [
@@ -710,25 +730,31 @@ const OPAL = [
   { p: .08, q: 3.5, dens: .85, base: '#1f2433' },
 ];
 function rollOpal() { let r = Math.random(); for (let i = 0; i < OPAL.length; i++) { if ((r -= OPAL[i].p) < 0) return i; } return 0; }
-const gemLabel = g => g.t === 'opal' && g.v != null ? L().opalName[g.v] : gn(g.t);
+const gemLabel = g => g.t === 'opal' && g.v != null ? L().opalName[g.v] : g.t === 'tanzanite' && g.v != null ? L().tzName[g.v] : gn(g.t);
+// tanzanite: which way up decides its colour; blue costs more grinding (GIA: violet orientations waste less rough)
+const TZ = [{ f: 1.4, grind: 1.4 }, { f: 1.15, grind: 1 }, { f: 0.6, grind: 1 }, { f: 1.25, grind: 1 }];
+const ORIENT_MS = 1600;
+const orientSeq = () => [0, 1, S.up.heat ? 3 : 2];
+const orientNow = () => orientSeq()[Math.floor(performance.now() / ORIENT_MS) % 3];
 const SHOP = [
   { k: 'fluorite', price: 15, buys: ['fluorite'] },
   { k: 'emerald', price: 400, buys: ['emerald'] },
   { k: 'corundum', price: 6000, buys: ['ruby', 'sapphire'] },
-  { k: 'opal', price: 25000, buys: ['opal'] },
-  { k: 'diamond', price: 250000, buys: ['diamond'] },
+  { k: 'opal', price: 50000, buys: ['opal'] },
+  { k: 'diamond', price: 7e5, buys: ['diamond'] },
   { k: 'tourmaline', price: 2e6, buys: ['tourmaline'], ch: 2 },
+  { k: 'tanzanite', price: 1e7, buys: ['tanzanite'], ch: 2 },
 ];
 const UPS = [
   { k: 'tool', max: 30, cost: l => 20 * 2.2 ** l, show: () => true,
     desc: l => tr('upTool', fmt(rockClick(l)), fmt(grindClick(l))) },
   { k: 'wheel', max: 30, cost: l => 60 * 2.4 ** l, show: () => S.total >= 25,
     desc: l => l ? tr('upWheelOn', fmt(autoGrind(l))) : tr('upWheelOff') },
-  { k: 'polish', max: 30, cost: l => 150 * 3 ** l, show: () => S.total >= 120,
+  { k: 'polish', max: 30, cost: l => 150 * 5 ** l, show: () => S.total >= 120,
     desc: l => tr('upPolish', fmt(1.25 ** l)) },
   { k: 'slots', max: 6, cost: l => 80 * 3.2 ** l, show: () => S.cases.length >= 2 || S.total >= 60,
     desc: () => tr('upSlots', S.slots) },
-  { k: 'lamp', max: 30, cost: l => 400 * 3 ** l, show: () => S.cases.length >= 2,
+  { k: 'lamp', max: 30, cost: l => 400 * 5 ** l, show: () => S.cases.length >= 2,
     desc: l => tr('upLamp', fmt(1.3 ** l)) },
   { k: 'oil', max: 4, cost: l => 300 * 3 ** l, show: () => S.bought.emerald > 0,
     desc: l => tr('upOil', (crackChance(l) * 100).toFixed(1)) },
@@ -736,14 +762,16 @@ const UPS = [
     desc: l => l ? tr('upDustOn') : tr('upDustOff') },
   { k: 'cover', max: 4, cost: l => 3e6 * 4 ** l, show: () => S.bought.tourmaline > 0,
     desc: l => tr('upCover', dustTime(l)) },
+  { k: 'heat', max: 1, cost: () => 4e7, show: () => S.bought.tanzanite > 0,
+    desc: l => l ? tr('upHeatOn') : tr('upHeatOff') },
 ];
 const OUTLINE = '#1c1922';
 
 /* ---------- state ---------- */
 const fresh = () => ({
   light: 0, total: 0, bench: null, cases: [], slots: 3,
-  up: { tool: 0, wheel: 0, polish: 0, lamp: 0, oil: 0, dust: 0, cover: 0 },
-  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0, tourmaline: 0 },
+  up: { tool: 0, wheel: 0, polish: 0, lamp: 0, oil: 0, dust: 0, cover: 0, heat: 0 },
+  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0, tourmaline: 0, tanzanite: 0 },
   lastAngle: {}, seen: {}, ended: false, seed: 7, t: Date.now(),
   tut: { taps: 0, grinds: 0, placed: 0, upgraded: 0, said: 0 },
   unlocked: {},
@@ -758,7 +786,7 @@ const grindClick = (l = S.up.tool) => 6 * 1.6 ** l;
 const autoGrind = (l = S.up.wheel) => l ? 3 * l * 1.4 ** l : 0;
 const crackChance = (l = S.up.oil) => 0.15 * 0.5 ** l;
 const dustTime = (l = S.up.cover) => 40 * 2 ** l;
-const facetNeed = b => GEMS[b.t].mohs ** 2 * 0.8 * (1 + 0.05 * b.facets) * (b.t === 'diamond' && !S.up.dust ? 5 : 1) * (GEMS[b.t].grindMul || 1);
+const facetNeed = b => GEMS[b.t].mohs ** 2 * 0.8 * (1 + 0.05 * b.facets) * (b.t === 'diamond' && !S.up.dust ? 5 : 1) * (GEMS[b.t].grindMul || 1) * (b.t === 'tanzanite' && b.v != null ? TZ[b.v].grind : 1);
 const rockHP = t => GEMS[t].mohs ** 2 * 1.2;
 const sapphireBonus = () => 1 + 0.08 * S.cases.filter(g => g.t === 'sapphire').length;
 function gemRate(g, inCase) {
@@ -879,6 +907,7 @@ const CUTS = {
   diamond: { k: 14, ring: RINGS.ellipse(1, 1), rings: [{ y: .4, s: .56 }, { y: .24, s: .84, rot: .5 }, { y: .04, s: 1 }, { y: -.46, s: .5, rot: .5 }], culet: -.98, pitch: 0.5 },
 };
 CUTS.sapphire = CUTS.ruby;
+CUTS.tanzanite = { k: 10, ring: RINGS.ellipse(1.08, 0.82), rings: [{ y: .36, s: .55 }, { y: .2, s: .86, rot: .5 }, { y: .02, s: 1 }, { y: -.4, s: .55, rot: .5 }], culet: -.82, pitch: 0.5 };
 CUTS.tourmaline = { k: 8, ring: RINGS.octagon(1.3, 0.62, 0.2), rings: [{ y: .4, s: .62 }, { y: .2, s: .86 }, { y: 0, s: 1 }, { y: -.34, s: .6 }], culet: -.56, pitch: 0.55 };
 CUTS.opal = { dome: true, pitch: 0.62 };
 const meshCache = {};
@@ -982,8 +1011,14 @@ function shadeFacet(G, n, id, seed) {
   const pal = G.alt && h < .4 ? G.alt : G.pal;
   return { c: pal[Math.max(0, Math.min(3, Math.floor(L * 4)))], spec };
 }
+const palCache = {};
+function gemLook(g) {
+  const G = GEMS[g.t]; if (!G.pals) return G;
+  const v = g.stage === 'orient' ? orientNow() : g.v ?? 1, k = g.t + v;
+  return palCache[k] || (palCache[k] = { ...G, pal: G.pals[v] });
+}
 function renderGem(g, stage, reveal, yaw) {
-  const G = GEMS[g.t], M = getMesh(g.t);
+  const G = gemLook(g), M = getMesh(g.t);
   if (G.opal) return renderOpal(g, stage, reveal, yaw);
   const cutN = stage === 'facet' || stage === 'done' ? g.facets : 0;
   const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(M.pitch), sp = Math.sin(M.pitch);
@@ -1151,7 +1186,8 @@ function drawScene(ctx, g, stage, reveal, time, particles) {
   const bob = reduced ? 0 : Math.round(Math.sin(time * 1.6 + g.seed) * 1.2);
   // finished gems spin on their own; unfinished ones sway a little so they still read as 3D
   const base = (g.seed % 628) / 100;
-  const yaw = reduced ? base : stage === 'done' ? base + time * 0.7 : base + 0.35 * Math.sin(time * 0.6);
+  // a tanzanite being oriented turns once per three colours, so each colour faces up as the stone comes round
+  const yaw = reduced ? base : stage === 'done' ? base + time * 0.7 : stage === 'orient' ? base + performance.now() / (3 * ORIENT_MS) * 2 * Math.PI : base + 0.35 * Math.sin(time * 0.6);
   const sparks = renderGem(g, stage, reveal, yaw);
   const sg = scratch(ctx, 'gem', SW, SH);
   sg.getContext('2d').putImageData(gemImg, 0, 0);
@@ -1251,7 +1287,7 @@ function renderSide() {
   // the workshop's turn: a stone is being chipped or ground, or the bench is empty and no stone is affordable yet.
   // A finished gem, the angle step, an offer on the bench or the oil button under a cracking emerald come first
   const offer = busy ? null : bestOffer();
-  const upsTurn = busy ? S.bench.stage !== 'done' && S.bench.stage !== 'angle' && !document.querySelector('#oilBtn.pulse') : !(offer && offer.ok);
+  const upsTurn = busy ? S.bench.stage !== 'done' && S.bench.stage !== 'angle' && S.bench.stage !== 'orient' && !document.querySelector('#oilBtn.pulse') : !(offer && offer.ok);
   const nudgeKey = S.tut.placed && !S.tut.upgraded
     ? (UPS.find(u => (u.show() || upLevel(u.k) > 0) && upLevel(u.k) < u.max && S.light >= u.cost(upLevel(u.k))) || {}).k : null;
   if (nudgeKey && !S.tut.said) { S.tut.said = 1; say(tr('workshopSay')); }
@@ -1284,15 +1320,18 @@ function renderSide() {
   const now = performance.now();
   const fresh = afford.filter(([k]) => !upsSeen.has(k) || now - upsSeen.get(k) > 90000).sort((a, b) => a[1] - b[1]);
   if (tab === 'ups') {
-    if (!upsPick && fresh.length) {
-      upsPick = fresh[0][0];
+    // inside the workshop the next step is always the cheapest thing to buy, newest first, so a player who follows the pulse never strands a cheap upgrade
+    const pick = fresh[0] || afford.slice().sort((a, b) => a[1] - b[1])[0];
+    if (!upsPick && pick) {
+      upsPick = pick[0];
       $('ups').querySelector(`[data-k="${upsPick}"]`).scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
     }
     afford.forEach(([k]) => upsSeen.set(k, now));
   } else upsPick = null;
   if (fresh.length && tab !== 'ups') upsCue = true;
   $('tabUps').classList.toggle('cue', upsCue && upsTurn);
-  dustTurn = upsTurn && !(upsCue && upsTurn) && S.cases.some(g => (g.dust || 0) >= 0.5);
+  // dust waits while the workshop calls, from its tab or from an upgrade pulsing inside it
+  dustTurn = upsTurn && !upsCue && !(tab === 'ups' && upsPick) && S.cases.some(g => (g.dust || 0) >= 0.5);
   $('tabCase').classList.toggle('cue', dustTurn && tab !== 'case');
 }
 let dustTurn = false, dustShown = false;
@@ -1333,12 +1372,12 @@ function renderBench() {
   if (cracking) { $('tapTip').hidden = false; $('tapTip').textContent = tr('crackTip'); }
   const showTap = !cracking && b && !S.tut.placed && ((b.stage === 'rock' && S.tut.taps < 3) || (b.stage === 'facet' && S.tut.grinds < 4));
   // the angle step changes what a tap means, so the stone says when to tap; a finished gem can still be tapped to put it away
-  const showAngle = !cracking && b && b.stage === 'angle';
+  const showAngle = !cracking && b && (b.stage === 'angle' || b.stage === 'orient');
   if (!cracking) $('tapTip').hidden = !(showTap || showAngle);
-  if (showTap || showAngle) $('tapTip').textContent = tr(showAngle ? 'tapAngle' : b.stage === 'rock' ? 'tapRock' : 'tapGrind');
+  if (showTap || showAngle) $('tapTip').textContent = tr(showAngle ? (b.stage === 'orient' ? 'tapOrient' : 'tapAngle') : b.stage === 'rock' ? 'tapRock' : 'tapGrind');
   $('anglePanel').hidden = !b || b.stage !== 'angle';
   const bar = $('barWrap'), fill = $('barFill'), txt = $('barText'), hint = $('hint');
-  bar.hidden = !b || b.stage === 'angle';
+  bar.hidden = !b || b.stage === 'angle' || b.stage === 'orient';
   let actions = '';
   if (!b) {
     hint.textContent = tr('hEmpty'); txt.textContent = ''; bar.hidden = true;
@@ -1348,6 +1387,11 @@ function renderBench() {
     hint.textContent = tr('hRock');
     fill.style.width = (100 * (1 - b.hp / b.hpMax)) + '%';
     txt.textContent = tr('rockBar', Math.max(0, Math.ceil(b.hp)), Math.ceil(b.hpMax));
+  } else if (b.stage === 'orient') {
+    // the key under the turning stone: each colour and what it is worth, the one facing up now underlined
+    const seq = orientSeq(), now = orientNow(), colors = L().tzColor;
+    hint.textContent = tr('hOrient', seq.map(v => colors[v]).join(LANG === 'zh' ? '、' : ', ')); txt.textContent = '';
+    actions = `<div class="orient-key">${seq.map(v => `<span class="${v === now ? 'on' : ''}" style="--c:${GEMS.tanzanite.pals[v][2]}">${colors[v]} ×${TZ[v].f}${v === 0 ? tr('tzMore') : ''}</span>`).join('')}</div>`;
   } else if (b.stage === 'angle') {
     hint.textContent = '';
     txt.textContent = '';
@@ -1397,6 +1441,11 @@ function bestOffer() {
     const price = priceOf(sh.k);
     sh.buys.forEach(t => opts.push({ t, price, name: sh.buys.length > 1 ? gn(t) : L().shop[sh.k].title, ok: S.light >= price }));
   }
+  // in chapter two a stone the player has never cut is the thing to save for, unless saving would take more than three minutes;
+  // without this the bench keeps offering another copy of the last stone and the light never piles up.
+  // Chapter one stays a loop of re-cutting the stones you have, which is what builds the first income
+  const rate = totalRate(), novel = opts.filter(o => !S.bought[GEMS[o.t].group] && SHOP.find(s => s.k === GEMS[o.t].group).ch).sort((a, b) => a.price - b.price)[0];
+  if (novel && (novel.ok || (rate > 0 && (novel.price - S.light) / rate <= 180))) return novel;
   const can = opts.filter(o => o.ok);
   return can.length ? can[can.length - 1] : opts.sort((a, b) => a.price - b.price)[0] || null;
 }
@@ -1550,7 +1599,7 @@ function lockAngle() {
   const b = S.bench; if (!b || b.stage !== 'angle') return;
   if (performance.now() - needle.lockedAt < 1200) return;
   const theta = needle.th, res = trace(GEMS[b.t].n, theta);
-  b.q = qualityOf(res.score); b.angle = theta; S.lastAngle[b.t] = theta;
+  b.q = qualityOf(res.score) * (b.t === 'tanzanite' && b.v != null ? TZ[b.v].f : 1); b.angle = theta; S.lastAngle[b.t] = theta;
   b.stage = 'facet'; b.prog = 0;
   if (res.score > 0.85) { sfx('clink', 1.5, 0.9); sfx('ping', 2, 0.6, 0.08); }
   else if (res.score > 0.5) sfx('clink', 1, 0.7);
@@ -1579,6 +1628,7 @@ function upgrade(k) {
   if (l >= u.max || S.light < c) return;
   S.light -= c;
   if (k === 'slots') S.slots++; else S.up[k]++;
+  if (k === 'heat') fact('heat');
   S.tut.upgraded = 1;
   upsSeen.delete(k); if (k === upsPick) upsPick = null;
   sfx('ping', 1.2, 0.6, 0.05); sfx('ping', 1.5, 0.6, 0.13);
@@ -1591,7 +1641,7 @@ function ensureTut() {
 const isUnlocked = s => S.bought[s.k] > 0 || s.k === 'fluorite' || ((!s.ch || S.ended) && S.total >= s.price * 0.25);
 // saves from before this feature already know their stones; don't replay those unlocks
 function seedUnlocked() { S.unlocked = {}; SHOP.forEach(s => { if (isUnlocked(s)) S.unlocked[s.k] = 1; }); }
-const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond', tourmaline: 'tourmaline' };
+const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond', tourmaline: 'tourmaline', tanzanite: 'tanzanite' };
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 let unlockGem = null, unlockTimer = 0, unlockRow = null;
 function announceUnlock(k, row) {
@@ -1707,6 +1757,9 @@ function hitBench() {
   } else if (b.stage === 'angle') {
     lockAngle();
     return;
+  } else if (b.stage === 'orient') {
+    lockOrient();
+    return;
   } else if (b.stage === 'done') {
     place(); return;
   } else if (b.stage === 'facet') {
@@ -1733,12 +1786,25 @@ function breakRock(tapped) {
     else sfx('chip', 0.6, 0.7, 0.15);
     say(L().opalMsg[v]); renderBench(); return;
   }
-  b.hp = 0; b.stage = 'angle';
-  needle.th = A_MIN; needle.dir = 1; needle.lockedAt = performance.now();
+  b.hp = 0;
   sfx('smash', 1, 0.9); sfx('clink', 0.6, 0.5, 0.15);
+  if (b.t === 'tanzanite' && b.v == null) { b.stage = 'orient'; orientGrace = performance.now() + 1000; renderBench(); return; }
+  toAngle(tapped);
+}
+function toAngle(tapped) {
+  const b = S.bench; b.stage = 'angle';
+  needle.th = A_MIN; needle.dir = 1; needle.lockedAt = performance.now();
   fact('angle');
   renderBench(); drawAngle();
   bringAngleIntoView(tapped);
+}
+let orientGrace = 0;
+function lockOrient() {
+  const b = S.bench; if (!b || b.stage !== 'orient' || performance.now() < orientGrace) return;
+  b.v = orientNow();
+  sfx('clink', b.v === 0 ? 1.4 : b.v === 2 ? 0.8 : 1.1, 0.7);
+  say(tr('tzPick', L().tzName[b.v]));
+  toAngle(true);
 }
 
 /* ---------- sound: CC0 clips from Freesound, decoded on first interaction ---------- */
