@@ -242,6 +242,8 @@ button b { font-family: var(--f-num); font-weight: 400; font-size: 15px; }
 .case-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); overflow: hidden; }
 .slot { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 4px 8px 10px; gap: 1px; min-height: 186px; border-left: 1px solid var(--line); margin-left: -1px; }
 .slot canvas { width: 100%; max-width: 124px; aspect-ratio: 128 / 150; image-rendering: pixelated; }
+.slot .wipe { margin-top: 6px; min-height: 32px; padding: 2px 12px; font-size: 13px; }
+.slot .wipe.off { visibility: hidden; }
 .slot .cap { display: flex; gap: .4em; align-items: baseline; padding-bottom: 2px; border-bottom: 2px solid var(--gem, var(--line)); }
 .slot .fig { font-family: var(--f-num); font-style: italic; font-size: 14px; color: var(--muted); }
 .slot .sn { font-family: var(--f-display); font-size: 15px; }
@@ -288,6 +290,9 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
 .goal-bar { flex: 1 1 60px; height: 3px; background: var(--line); position: relative; min-width: 40px; }
 .goal-bar i { position: absolute; inset: 0 auto 0 0; background: var(--ink); width: 0; transition: width .25s cubic-bezier(.16, 1, .3, 1); }
 @media (min-height: 560px) {
+  /* when the bench cannot fit its status, message and button, the property callouts give way first */
+  .bench.tight .callouts { display: none !important; }
+  .grid > .bench > * { flex-shrink: 0; }
   html, body { overflow: hidden; overscroll-behavior: none; }
   .app { height: var(--appH, 100dvh); box-sizing: border-box; gap: 0; padding-block: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom, 0px)); }
   .plate { flex: 1; min-height: 0; display: flex; }
@@ -504,7 +509,7 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
       <p id="endA"></p>
       <p class="big" id="endB"></p>
       <p id="endC"></p>
-      <p class="row-desc" data-i18n="endNote">主线到这里结束。展柜会一直亮着，你可以接着切，也可以去赌一块黑欧泊。</p>
+      <p class="row-desc" data-i18n="endNote">第一章到这里结束。展柜里的光还在攒，攒够了会有新的原石出现：第二章的石头各有各的脾气。</p>
       <div class="actions"><button id="endClose" class="primary" data-i18n="endClose">继续</button></div>
     </div>
   </div>
@@ -531,7 +536,7 @@ const I18N = {
     shopH: '原石', workshopH: '工坊', caseH: '展柜',
     footer: '进度只存在这台设备的浏览器里。音效来自 Freesound（CC0）。',
     reset: '重新开始', resetQ: '确定清空全部进度？', resetYes: '清空', resetNo: '取消',
-    endH: '这颗钻石留住了多少光？', endNote: '主线到这里结束。展柜会一直亮着，你可以接着切，也可以去赌一块黑欧泊。', endClose: '继续',
+    endH: '这颗钻石留住了多少光？', endNote: '第一章到这里结束。展柜里的光还在攒，攒够了会有新的原石出现：第二章的石头各有各的脾气。', endClose: '继续',
     endA: p => `这颗钻石有 57 个刻面，留住了 ${p}% 的光，每秒送回`, endB: v => `${v} 光`,
     endC: v => `从第一块萤石算起，你一共收集了 ${v} 光。`,
     opalName: ['普通欧泊', '白欧泊', '晶质欧泊', '黑欧泊'],
@@ -547,6 +552,7 @@ const I18N = {
       corundum: { title: '刚玉原石', sub: 'Al₂O₃ · 硬度 9', desc: '33 个刻面。同一种矿物，杂质决定颜色。红宝石：强光下发红色荧光，出光 ×1.3。蓝宝石：每颗让整个展柜出光 +8%。', buy: ['红宝石', '蓝宝石'] },
       opal: { title: '欧泊原石', sub: 'SiO₂ · nH₂O · 硬度 5.5–6.5', desc: '不切刻面，只抛成弧面。敲开之前不知道是什么：可能是没有变彩的普通欧泊，也可能是黑欧泊。', buy: ['赌一块'] },
       diamond: { title: '钻石原石', sub: 'C · 硬度 10', desc: '57 个刻面，标准圆形明亮式。临界角只有 24.4°，光进去就很难漏出来。', buy: ['买一块'] },
+      tourmaline: { title: '碧玺原石', sub: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄ · 硬度 7–7.5', desc: '33 个刻面。受热会带电、吸灰：放进展柜后射灯一照，它会慢慢蒙上灰变暗，点「擦灰」就亮回来。', buy: ['买一块'] },
     },
     free: '免费', shopBusy: '工作台空出来才能放下一块', locked: v => `累计收集 ${v} 光后出现`,
     facts: {
@@ -555,10 +561,12 @@ const I18N = {
       ruby: '红宝石和蓝宝石都是刚玉 Al₂O₃，硬度 9，仅次于钻石。红宝石里的铬在紫外线和强光下会发出红色荧光。',
       sapphire: '蓝宝石的蓝来自铁和钛之间的电荷转移。刚玉只要不是红色，其他颜色在行内也都叫蓝宝石。',
       diamond: '钻石是纯碳，莫氏硬度 10。能磨它的只有钻石本身，所以切磨钻石用的是钻石粉。',
+      tourmaline: '碧玺受热时，晶体两端会带上相反的电荷，能把炉灰吸过来，这叫热释电。1703 年荷兰人从锡兰把它带回欧洲，注意到的就是这一点。',
+      pyro: '灰擦掉了。射灯一直烤着碧玺，它还会再吸灰。工坊里的「防尘罩」能让它积灰慢一些。',
       opal: '欧泊是含水的二氧化硅，里面堆着排列整齐的微小硅球。白光在硅球间衍射，才出现随角度变化的彩色斑块，这叫「变彩」。它是圆顶，底下没有尖角可以锁光，所以不用定角。',
       angle: '宝石底部的角度决定光能不能绕回来。角度对了，光在底部反射两次，再从顶上射出来，宝石就亮。钻石的好角度最宽，萤石最窄。',
     },
-    up: { tool: '錾子与砂盘', wheel: '自动磨盘', polish: '氧化铈抛光粉', slots: '展柜格位', lamp: '展柜射灯', oil: '浸油处理', dust: '钻石微粉' },
+    up: { tool: '錾子与砂盘', wheel: '自动磨盘', polish: '氧化铈抛光粉', slots: '展柜格位', lamp: '展柜射灯', oil: '浸油处理', dust: '钻石微粉', cover: '防尘罩' },
     upTool: (a, b) => `每次点击：敲 ${a} · 磨 ${b}`, upWheelOn: a => `每秒自动研磨 ${a}`, upWheelOff: '工作台自己转起来，不点也在磨',
     upPolish: m => `所有宝石出光 ×1.25（当前 ×${m}）`, upSlots: n => `现在能放 ${n} 颗，最多 9 颗`,
     upLamp: m => `展柜里的宝石出光 ×1.3（当前 ×${m}）`, upOil: p => `祖母绿每磨一面的开裂几率：${p}%`,
@@ -567,6 +575,7 @@ const I18N = {
     benchBuy: n => `买一块${n}放上工作台 · `, busyBtn: '台上还有石头 · ', tapAngle: '指针到亮处时点我',
     goalLocked: a => `再收集 ${a} 光，出现新原石`, goalBuy: (n, a) => `再攒 ${a} 光就能买${n}`, goalReady: n => `${n}买得起了`,
     eta: t => ` · 约 ${t}`, etaS: n => `${n} 秒`, etaM: n => `${n} 分钟`, etaH: n => `${n} 小时`, upsReady: n => `${n} 项可买`,
+    upCover: t => `碧玺积满灰要 ${t} 秒`, wipeBtn: '擦灰',
     nudge: '光可以花在这里', nudgeOil: '能防祖母绿开裂', workshopSay: '攒下的光可以在「工坊」里花掉。升级以后敲得更快、磨得更快。',
     specs: (h, n, d) => `硬度 ${h} · 折射率 ${n} · 色散 ${d}`, specsQ: q => ` · 品质 ×${q}`,
     hEmpty: '从「原石」里挑一块放上工作台。', hRock: '点石头，敲掉外面那层石皮。', rockBar: (a, b) => `石皮 ${a} / ${b}`,
@@ -600,7 +609,7 @@ const I18N = {
     shopH: 'Rough stones', workshopH: 'Workshop', caseH: 'Display case',
     footer: 'Progress is saved in this browser only. Sounds from Freesound (CC0).',
     reset: 'Start over', resetQ: 'Erase all progress?', resetYes: 'Erase', resetNo: 'Cancel',
-    endH: 'How much light did this diamond keep?', endNote: 'That is the end of the main path. Your case keeps glowing. Keep cutting, or try your luck for a black opal.', endClose: 'Continue',
+    endH: 'How much light did this diamond keep?', endNote: 'That is the end of chapter one. Your case keeps gathering light, and new rough will turn up: the stones of chapter two each have a temper of their own.', endClose: 'Continue',
     endA: p => `57 facets, ${p}% of the light kept. Every second it sends back`, endB: v => `${v} light`,
     endC: v => `Since your first fluorite, you have gathered ${v} light.`,
     opalName: ['Common opal', 'White opal', 'Crystal opal', 'Black opal'],
@@ -616,6 +625,7 @@ const I18N = {
       corundum: { title: 'Corundum rough', sub: 'Al₂O₃ · hardness 9', desc: '33 facets. One mineral; the impurity decides the color. Ruby glows red under strong light, light ×1.3. Each sapphire adds +8% to the whole case.', buy: ['Ruby', 'Sapphire'] },
       opal: { title: 'Opal rough', sub: 'SiO₂ · nH₂O · hardness 5.5–6.5', desc: 'No facets, just a polished dome. You will not know what you have until it cracks open: plain common opal, or a black opal.', buy: ['Take a gamble'] },
       diamond: { title: 'Diamond rough', sub: 'C · hardness 10', desc: '57 facets in a round brilliant cut. Its critical angle is only 24.4°, so light that gets in has a hard time leaking out.', buy: ['Buy one'] },
+      tourmaline: { title: 'Tourmaline rough', sub: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄ · hardness 7–7.5', desc: '33 facets. Warm it and it takes on a charge and pulls in dust: under the case spotlight it slowly greys over and dims. Tap “Dust it” to bring it back.', buy: ['Buy one'] },
     },
     free: 'Free', shopBusy: 'Clear the workbench first', locked: v => `Appears after you have gathered ${v} light`,
     facts: {
@@ -624,10 +634,12 @@ const I18N = {
       ruby: 'Ruby and sapphire are both corundum, Al₂O₃, hardness 9, second only to diamond. The chromium in ruby glows red under UV and strong light.',
       sapphire: 'Sapphire gets its blue from charge transfer between iron and titanium. In the trade, corundum of any color except red is called sapphire.',
       diamond: 'Diamond is pure carbon, hardness 10. Only diamond can cut diamond, so diamonds are polished with diamond powder.',
+      tourmaline: 'Warm a tourmaline and its two ends take opposite charges, strong enough to pull in ash from a fire. This is pyroelectricity. Dutch traders brought it from Ceylon in 1703 and noticed exactly that.',
+      pyro: 'Dusted. The spotlight keeps warming the tourmaline, so it will gather dust again. A dust cover from the Workshop slows it down.',
       opal: 'Opal is silica with water in it, packed with tiny spheres in neat rows. White light diffracts between them, making patches of color that shift as the stone turns. This is called play-of-color. An opal is a dome with no point underneath to trap light, so there is no angle to set.',
       angle: 'The angle at the bottom of a gem decides whether light comes back. Get it right and light bounces twice inside, then shoots out the top and the gem shines. Diamond has the widest sweet spot; fluorite has the narrowest.',
     },
-    up: { tool: 'Chisel & lap', wheel: 'Auto grinder', polish: 'Cerium oxide polish', slots: 'Case slots', lamp: 'Case spotlight', oil: 'Oil treatment', dust: 'Diamond powder' },
+    up: { tool: 'Chisel & lap', wheel: 'Auto grinder', polish: 'Cerium oxide polish', slots: 'Case slots', lamp: 'Case spotlight', oil: 'Oil treatment', dust: 'Diamond powder', cover: 'Dust cover' },
     upTool: (a, b) => `Per tap: chip ${a} · grind ${b}`, upWheelOn: a => `Grinds ${a} per second on its own`, upWheelOff: 'The bench keeps grinding even when you do not tap',
     upPolish: m => `All gems shine ×1.25 (now ×${m})`, upSlots: n => `Holds ${n} now, up to 9`,
     upLamp: m => `Gems in the case shine ×1.3 (now ×${m})`, upOil: p => `Chance an emerald cracks per facet: ${p}%`,
@@ -636,6 +648,7 @@ const I18N = {
     benchBuy: n => `Buy ${n} for the bench · `, busyBtn: 'Bench is busy · ', tapAngle: 'Tap me when the needle glows',
     goalLocked: a => `Gather ${a} more light to reveal a new stone`, goalBuy: (n, a) => `${a} more light to afford ${n}`, goalReady: n => `You can afford ${n}`,
     eta: t => ` · about ${t}`, etaS: n => `${n} s`, etaM: n => `${n} min`, etaH: n => `${n} h`, upsReady: n => `${n} ready`,
+    upCover: t => `A tourmaline takes ${t} s to dust over`, wipeBtn: 'Dust it',
     nudge: 'Spend your light here', nudgeOil: 'Stops emerald cracks', workshopSay: 'You can spend light in the Workshop. Upgrades make you chip and grind faster.',
     specs: (h, n, d) => `Hardness ${h} · RI ${n} · Dispersion ${d}`, specsQ: q => ` · Quality ×${q}`,
     hEmpty: 'Pick a stone from Rough stones and put it on the bench.', hRock: 'Tap the stone to chip off the crust.', rockBar: (a, b) => `Crust ${a} / ${b}`,
@@ -684,6 +697,10 @@ const GEMS = {
   diamond: { group: 'diamond', name: '钻石', en: 'Diamond', f: 'C', mohs: 10, mohsTxt: '10', n: 2.417, disp: .044, maxF: 57, shape: 'round',
     pal: ['#3a3d4a', '#767c8d', '#c0c7d6', '#eef2f9', '#ffffff'], fire: ['#ff6fae', '#ffd84d', '#5fe3ff', '#a77bff'],
     rock: ['#787a83', '#8f929a', '#a7aab1'], caust: ['#ff7fbf', '#ffe066', '#6fe3ff', '#b48bff'], ui: '#7a8296', swing: 22 },
+  // chapter two: every stone brings one rule from its real physics (sources in docs/chapter2-facts.md)
+  tourmaline: { group: 'tourmaline', name: '碧玺', en: 'Tourmaline', f: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄', mohs: 7.25, mohsTxt: '7–7.5', n: 1.62, disp: .017, maxF: 33, shape: 'step', mult: 18,
+    pal: ['#053a3f', '#0b7480', '#19b3c2', '#7deef2', '#e9ffff'],
+    rock: ['#4f5a58', '#66716e', '#7d8885'], caust: ['#5ff0f0', '#8dffc8'], ui: '#139aa8', swing: 12 },
 };
 // opal has no facets; what the stone is worth depends on the play-of-color you crack open
 const OPAL = [
@@ -700,6 +717,7 @@ const SHOP = [
   { k: 'corundum', price: 6000, buys: ['ruby', 'sapphire'] },
   { k: 'opal', price: 25000, buys: ['opal'] },
   { k: 'diamond', price: 250000, buys: ['diamond'] },
+  { k: 'tourmaline', price: 2e6, buys: ['tourmaline'], ch: 2 },
 ];
 const UPS = [
   { k: 'tool', max: 30, cost: l => 20 * 2.2 ** l, show: () => true,
@@ -716,14 +734,16 @@ const UPS = [
     desc: l => tr('upOil', (crackChance(l) * 100).toFixed(1)) },
   { k: 'dust', max: 1, cost: () => 60000, show: () => S.total >= 40000,
     desc: l => l ? tr('upDustOn') : tr('upDustOff') },
+  { k: 'cover', max: 4, cost: l => 3e6 * 4 ** l, show: () => S.bought.tourmaline > 0,
+    desc: l => tr('upCover', dustTime(l)) },
 ];
 const OUTLINE = '#1c1922';
 
 /* ---------- state ---------- */
 const fresh = () => ({
   light: 0, total: 0, bench: null, cases: [], slots: 3,
-  up: { tool: 0, wheel: 0, polish: 0, lamp: 0, oil: 0, dust: 0 },
-  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0 },
+  up: { tool: 0, wheel: 0, polish: 0, lamp: 0, oil: 0, dust: 0, cover: 0 },
+  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0, tourmaline: 0 },
   lastAngle: {}, seen: {}, ended: false, seed: 7, t: Date.now(),
   tut: { taps: 0, grinds: 0, placed: 0, upgraded: 0, said: 0 },
   unlocked: {},
@@ -737,6 +757,7 @@ const rockClick = (l = S.up.tool) => 4 * 1.6 ** l;
 const grindClick = (l = S.up.tool) => 6 * 1.6 ** l;
 const autoGrind = (l = S.up.wheel) => l ? 3 * l * 1.4 ** l : 0;
 const crackChance = (l = S.up.oil) => 0.15 * 0.5 ** l;
+const dustTime = (l = S.up.cover) => 40 * 2 ** l;
 const facetNeed = b => GEMS[b.t].mohs ** 2 * 0.8 * (1 + 0.05 * b.facets) * (b.t === 'diamond' && !S.up.dust ? 5 : 1) * (GEMS[b.t].grindMul || 1);
 const rockHP = t => GEMS[t].mohs ** 2 * 1.2;
 const sapphireBonus = () => 1 + 0.08 * S.cases.filter(g => g.t === 'sapphire').length;
@@ -744,7 +765,7 @@ function gemRate(g, inCase) {
   const G = GEMS[g.t];
   if (!g.facets) return 0;
   return 40 * fres0(G.n) * g.facets * (1 + 20 * G.disp) * (g.q || 1) * 1.25 ** S.up.polish
-    * (G.mult || 1) * (inCase ? 1.3 ** S.up.lamp : 1) * (g.t === 'ruby' ? 1.3 : 1) * sapphireBonus();
+    * (G.mult || 1) * (inCase ? 1.3 ** S.up.lamp * (1 - 0.6 * (g.dust || 0)) : 1) * (g.t === 'ruby' ? 1.3 : 1) * sapphireBonus();
 }
 const caseRate = () => S.cases.reduce((a, g) => a + gemRate(g, true), 0);
 const benchRate = () => S.bench && (S.bench.stage === 'facet' || S.bench.stage === 'done') ? gemRate(S.bench, false) : 0;
@@ -858,6 +879,7 @@ const CUTS = {
   diamond: { k: 14, ring: RINGS.ellipse(1, 1), rings: [{ y: .4, s: .56 }, { y: .24, s: .84, rot: .5 }, { y: .04, s: 1 }, { y: -.46, s: .5, rot: .5 }], culet: -.98, pitch: 0.5 },
 };
 CUTS.sapphire = CUTS.ruby;
+CUTS.tourmaline = { k: 8, ring: RINGS.octagon(1.3, 0.62, 0.2), rings: [{ y: .4, s: .62 }, { y: .2, s: .86 }, { y: 0, s: 1 }, { y: -.34, s: .6 }], culet: -.56, pitch: 0.55 };
 CUTS.opal = { dome: true, pitch: 0.62 };
 const meshCache = {};
 function getMesh(t) {
@@ -1134,6 +1156,12 @@ function drawScene(ctx, g, stage, reveal, time, particles) {
   const sg = scratch(ctx, 'gem', SW, SH);
   sg.getContext('2d').putImageData(gemImg, 0, 0);
   ctx.drawImage(sg, 0, bob);
+  // a tourmaline in the case gathers dust: grey specks inside its silhouette, more as it dims
+  if (g.dust > 0.02) {
+    ctx.fillStyle = '#9a9488';
+    const lim = g.dust * 0.55;
+    for (let o = 0; o < SW * SH; o++) if (idBuf[o] >= 0 && hash2(o % SW, (o / SW) | 0, g.seed % 61) < lim) ctx.fillRect(o % SW, ((o / SW) | 0) + bob, 1, 1);
+  }
   if (power > 0) {
     ctx.fillStyle = '#ffffff';
     sparks.slice(0, 8).forEach(([x, y], i) => {
@@ -1264,8 +1292,15 @@ function renderSide() {
   } else upsPick = null;
   if (fresh.length && tab !== 'ups') upsCue = true;
   $('tabUps').classList.toggle('cue', upsCue && upsTurn);
+  dustTurn = upsTurn && !(upsCue && upsTurn) && S.cases.some(g => (g.dust || 0) >= 0.5);
+  $('tabCase').classList.toggle('cue', dustTurn && tab !== 'case');
 }
+let dustTurn = false, dustShown = false;
 
+function fitBench() {
+  const bench = $('bench'); bench.classList.remove('tight');
+  if (SHELL.matches && bench.scrollHeight > bench.clientHeight + 1) bench.classList.add('tight');
+}
 function renderBench() {
   const b = S.bench, bench = $('bench');
   const G = b ? GEMS[b.t] : null;
@@ -1280,7 +1315,7 @@ function renderBench() {
   // the measurements wait until the stone is cut open; a lump of rock has nothing to annotate yet
   $('specimen').classList.toggle('empty', !G || b.stage === 'rock');
   bench.classList.toggle('vacant', !G);
-  $('plateNo').textContent = tr('plate', G ? ['I', 'II', 'III', 'IV', 'V'][['fluorite', 'emerald', 'corundum', 'opal', 'diamond'].indexOf(G.group)] : '—');
+  $('plateNo').textContent = tr('plate', G ? ROMAN[SHOP.findIndex(s => s.k === G.group)] : '—');
   $('benchFig').textContent = G ? tr('fig', Math.min(S.cases.length + 1, S.slots)) : '';
   if (G) {
     $('cHard').textContent = G.mohsTxt; $('cRI').textContent = G.n.toFixed(3); $('cDisp').textContent = G.disp.toFixed(3);
@@ -1377,13 +1412,24 @@ function renderCase() {
     for (let i = 0; i < S.slots; i++) {
       const g = S.cases[i];
       html += g
-        ? `<div class="slot" style="--gem:${GEMS[g.t].ui}"><canvas width="128" height="150" data-i="${i}"></canvas><span class="cap"><span class="fig">${tr('fig', i + 1)}</span><span class="sn">${gemLabel(g)}</span></span><span class="sr" data-r="${i}"></span></div>`
+        ? `<div class="slot" style="--gem:${GEMS[g.t].ui}"><canvas width="128" height="150" data-i="${i}"></canvas><span class="cap"><span class="fig">${tr('fig', i + 1)}</span><span class="sn">${gemLabel(g)}</span></span><span class="sr" data-r="${i}"></span>${g.t === 'tourmaline' ? `<button class="wipe off" data-wipe="${i}">${tr('wipeBtn')}</button>` : ''}</div>`
         : `<div class="slot empty">${tr('slotEmpty')}</div>`;
     }
     $('caseGrid').innerHTML = html;
   }
   S.cases.forEach((g, i) => { const el = $('caseGrid').querySelector(`[data-r="${i}"]`); if (el) el.textContent = tr('slotRate', fmt(gemRate(g, true)), g.q.toFixed(2)); });
+  // a dusty tourmaline offers its wipe button; it pulses only when the case holds the next step
+  $('caseGrid').querySelectorAll('[data-wipe]').forEach(b => { const d = S.cases[+b.dataset.wipe]?.dust || 0; b.classList.toggle('off', d < 0.25); b.classList.toggle('pulse', dustTurn && d >= 0.5); });
+  const call = $('caseGrid').querySelector('.wipe.pulse');
+  if (call && tab === 'case' && !dustShown) { dustShown = true; call.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' }); }
+  if (!call) dustShown = false;
 }
+function wipe(i) {
+  const g = S.cases[i]; if (!g || g.t !== 'tourmaline') return;
+  g.dust = 0; sfx('chip', 1.6, 0.4); sfx('clink', 1.3, 0.5, 0.08);
+  fact('pyro'); renderAll();
+}
+
 
 /* ---------- angle game: a needle sweeps 25°–60° at constant speed ---------- */
 const A_MIN = 25, A_MAX = 60;
@@ -1542,10 +1588,11 @@ function upgrade(k) {
 function ensureTut() {
   if (!S.tut || S.tut.taps == null) S.tut = S.cases.length || S.bought.emerald ? { taps: 9, grinds: 9, placed: 1, upgraded: 1, said: 1 } : fresh().tut;
 }
-const isUnlocked = s => S.bought[s.k] > 0 || s.k === 'fluorite' || S.total >= s.price * 0.25;
+const isUnlocked = s => S.bought[s.k] > 0 || s.k === 'fluorite' || ((!s.ch || S.ended) && S.total >= s.price * 0.25);
 // saves from before this feature already know their stones; don't replay those unlocks
 function seedUnlocked() { S.unlocked = {}; SHOP.forEach(s => { if (isUnlocked(s)) S.unlocked[s.k] = 1; }); }
-const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond' };
+const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond', tourmaline: 'tourmaline' };
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 let unlockGem = null, unlockTimer = 0, unlockRow = null;
 function announceUnlock(k, row) {
   const t = GROUP_GEM[k], G = GEMS[t];
@@ -1554,7 +1601,7 @@ function announceUnlock(k, row) {
   const box = $('unlock');
   box.style.setProperty('--gem', G.ui);
   $('unlockName').textContent = tr('unlockName', L().shop[k].title);
-  $('unlockSub').textContent = tr('plate', ['I', 'II', 'III', 'IV', 'V'][SHOP.findIndex(s => s.k === k)]) + ' · ' + L().shop[k].sub;
+  $('unlockSub').textContent = tr('plate', ROMAN[SHOP.findIndex(s => s.k === k)]) + ' · ' + L().shop[k].sub;
   $('unlockGo').textContent = tr('unlockGo');
   box.hidden = false; box.style.animation = 'none'; void box.offsetWidth; box.style.animation = '';
   row.style.setProperty('--gem', G.ui); row.classList.remove('fresh'); void row.offsetWidth; row.classList.add('fresh');
@@ -1773,13 +1820,14 @@ function step(now) {
     });
   }
   uiAcc += dt;
-  if (uiAcc > 0.12) { uiAcc = 0; renderTop(); renderSide(); renderBench(); renderCase(); }
+  if (uiAcc > 0.12) { uiAcc = 0; renderTop(); renderSide(); renderBench(); renderCase(); fitBench(); }
   saveAcc += dt; if (saveAcc > 5) { saveAcc = 0; save(); }
   requestAnimationFrame(step);
 }
 function simulate(dt) {
   const r = totalRate();
   S.light += r * dt; S.total += r * dt;
+  for (const g of S.cases) if (g.t === 'tourmaline') g.dust = Math.min(1, (g.dust || 0) + dt / dustTime());
   const b = S.bench, ag = autoGrind();
   if (b && ag) {
     if (b.stage === 'rock') { b.hp -= ag * 0.5 * dt; if (b.hp <= 0) breakRock(); }
@@ -1833,6 +1881,7 @@ benchCv.addEventListener('pointerdown', e => { e.preventDefault(); hitBench(); }
 benchCv.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hitBench(); } });
 $('shop').addEventListener('click', e => { const b = e.target.closest('button[data-buy]'); if (b) buy(b.dataset.buy); });
 $('ups').addEventListener('click', e => { const b = e.target.closest('button[data-up]'); if (b) upgrade(b.dataset.up); });
+$('caseGrid').addEventListener('click', e => { const b = e.target.closest('.slot')?.querySelector('button[data-wipe]:not(.off)'); if (b && live()) wipe(+b.dataset.wipe); });
 $('langBtn').addEventListener('click', () => {
   LANG = LANG === 'zh' ? 'en' : 'zh';
   try { localStorage.setItem('canguang-lang', LANG); } catch (e) {}
