@@ -244,6 +244,11 @@ button b { font-family: var(--f-num); font-weight: 400; font-size: 15px; }
 .slot canvas { width: 100%; max-width: 124px; aspect-ratio: 128 / 150; image-rendering: pixelated; }
 .slot .wipe { margin-top: 6px; min-height: 32px; padding: 2px 12px; font-size: 13px; }
 .slot .wipe.off { visibility: hidden; }
+.lights { display: flex; gap: 0; margin: 2px 0 8px; }
+.lights button { flex: 1 1 0; min-height: 40px; font-size: 13px; }
+.lights button + button { margin-left: -1px; }
+.lights button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.case.candle .case-grid { background: color-mix(in srgb, #ff9a3c 9%, transparent); }
 .orient-key { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; font-size: 13px; color: var(--muted); }
 .orient-key span::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 6px; background: var(--c); vertical-align: -1px; }
 .orient-key .on { color: var(--ink); text-decoration: underline 2px var(--c); text-underline-offset: 4px; }
@@ -496,6 +501,7 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
   </nav>
   <section class="case" id="caseSec" data-panel="case">
     <h2><span data-i18n="caseH">展柜</span> <small id="caseInfo"></small></h2>
+    <div class="lights" id="lights" hidden><button data-lit="day"></button><button data-lit="candle"></button></div>
     <div id="caseGrid" class="case-grid"></div>
   </section>
  </div></div>
@@ -557,6 +563,7 @@ const I18N = {
       diamond: { title: '钻石原石', sub: 'C · 硬度 10', desc: '57 个刻面，标准圆形明亮式。临界角只有 24.4°，光进去就很难漏出来。', buy: ['买一块'] },
       tourmaline: { title: '碧玺原石', sub: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄ · 硬度 7–7.5', desc: '33 个刻面。受热会带电、吸灰：放进展柜后射灯一照，它会慢慢蒙上灰变暗，点「擦灰」就亮回来。', buy: ['买一块'] },
       tanzanite: { title: '坦桑石原石', sub: 'Ca₂Al₃(SiO₄)(Si₂O₇)O(OH) · 硬度 6–7', desc: '41 个刻面。三色性：换个方向看，分别是深蓝、红紫、黄绿。敲开后它会慢慢转，想要的颜色朝上时点一下。深蓝最亮，但要多磨掉一些原石。', buy: ['买一块'] },
+      alexandrite: { title: '变石原石', sub: 'BeAl₂O₄ · 硬度 8.5', desc: '49 个刻面。亚历山大变石：日光下是绿的，烛光下变成红的。买下后展柜多一个灯光开关：日光让绿和蓝的宝石更亮，烛光让红宝石、欧泊和钻石更亮；变石在两种光下都更亮。', buy: ['买一块'] },
     },
     free: '免费', shopBusy: '工作台空出来才能放下一块', locked: v => `累计收集 ${v} 光后出现`,
     facts: {
@@ -569,6 +576,8 @@ const I18N = {
       pyro: '灰擦掉了。射灯一直烤着碧玺，它还会再吸灰。工坊里的「防尘罩」能让它积灰慢一些。',
       tanzanite: '坦桑石的商业产地全世界只有一处：坦桑尼亚的梅勒拉尼山。它有三色性，从不同方向看颜色不同，所以下刀的方向决定了它正面看是蓝还是紫。',
       heat: '大多数蓝色坦桑石都加热过：加热到几百摄氏度，黄绿和褐色调就褪掉了，剩下蓝和紫。',
+      alexandrite: '变石 1830 年前后在俄国乌拉尔山被发现，以未来的沙皇亚历山大二世命名。它里面的铬吸掉 570 纳米左右的黄绿光，只留下绿和红两个窗口：日光里绿光多，它就是绿的；烛光里红光多，它就变红。',
+      lit: '换了光源，变石跟着变了色。石头本身没变，变的是照在它身上的光。',
       opal: '欧泊是含水的二氧化硅，里面堆着排列整齐的微小硅球。白光在硅球间衍射，才出现随角度变化的彩色斑块，这叫「变彩」。它是圆顶，底下没有尖角可以锁光，所以不用定角。',
       angle: '宝石底部的角度决定光能不能绕回来。角度对了，光在底部反射两次，再从顶上射出来，宝石就亮。钻石的好角度最宽，萤石最窄。',
     },
@@ -584,6 +593,7 @@ const I18N = {
     upCover: t => `碧玺积满灰要 ${t} 秒`, wipeBtn: '擦灰',
     upHeatOff: '把坦桑石加热到几百 °C，去掉黄绿色调：黄绿方向会变成蓝紫。', upHeatOn: '已备好。坦桑石的黄绿方向变成蓝紫。',
     tzName: ['深蓝坦桑石', '红紫坦桑石', '黄绿坦桑石', '蓝紫坦桑石'], tzColor: ['深蓝', '红紫', '黄绿', '蓝紫'], tzMore: ' · 多磨 40%',
+    litDay: '日光', litCandle: '烛光', litRate: v => ` · 每秒 ${v}`,
     hOrient: c => `坦桑石在慢慢转，${c}轮流朝上。想要的颜色朝上时点它。`, tapOrient: '颜色对了点我', tzPick: n => `选好了：${n}。接下来定角。`,
     nudge: '光可以花在这里', nudgeOil: '能防祖母绿开裂', workshopSay: '攒下的光可以在「工坊」里花掉。升级以后敲得更快、磨得更快。',
     specs: (h, n, d) => `硬度 ${h} · 折射率 ${n} · 色散 ${d}`, specsQ: q => ` · 品质 ×${q}`,
@@ -636,6 +646,7 @@ const I18N = {
       diamond: { title: 'Diamond rough', sub: 'C · hardness 10', desc: '57 facets in a round brilliant cut. Its critical angle is only 24.4°, so light that gets in has a hard time leaking out.', buy: ['Buy one'] },
       tourmaline: { title: 'Tourmaline rough', sub: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄ · hardness 7–7.5', desc: '33 facets. Warm it and it takes on a charge and pulls in dust: under the case spotlight it slowly greys over and dims. Tap “Dust it” to bring it back.', buy: ['Buy one'] },
       tanzanite: { title: 'Tanzanite rough', sub: 'Ca₂Al₃(SiO₄)(Si₂O₇)O(OH) · hardness 6–7', desc: '41 facets. Trichroic: from different directions it looks deep blue, red-violet or yellow-green. Once it is open it slowly turns; tap when the colour you want faces up. Blue is brightest but costs more grinding.', buy: ['Buy one'] },
+      alexandrite: { title: 'Alexandrite rough', sub: 'BeAl₂O₄ · hardness 8.5', desc: '49 facets. Green in daylight, red by candlelight. Buying one adds a light switch to the case: daylight favours green and blue gems, candlelight favours ruby, opal and diamond; alexandrite shines under both.', buy: ['Buy one'] },
     },
     free: 'Free', shopBusy: 'Clear the workbench first', locked: v => `Appears after you have gathered ${v} light`,
     facts: {
@@ -648,6 +659,8 @@ const I18N = {
       pyro: 'Dusted. The spotlight keeps warming the tourmaline, so it will gather dust again. A dust cover from the Workshop slows it down.',
       tanzanite: 'Tanzanite is mined commercially in only one place: the Merelani Hills of Tanzania. It is trichroic, so the direction a cutter chooses decides whether it faces up blue or violet.',
       heat: 'Most blue tanzanite has been heated: a few hundred degrees Celsius drives off the yellow-green and brown, leaving blue and violet.',
+      alexandrite: 'Alexandrite was found in Russia’s Ural Mountains around 1830 and named for the future Tsar Alexander II. Its chromium absorbs yellow-green light near 570 nm and leaves two windows, green and red: daylight is rich in green so it looks green, candlelight is rich in red so it turns red.',
+      lit: 'New light, new colour. The stone has not changed; the light falling on it has.',
       opal: 'Opal is silica with water in it, packed with tiny spheres in neat rows. White light diffracts between them, making patches of color that shift as the stone turns. This is called play-of-color. An opal is a dome with no point underneath to trap light, so there is no angle to set.',
       angle: 'The angle at the bottom of a gem decides whether light comes back. Get it right and light bounces twice inside, then shoots out the top and the gem shines. Diamond has the widest sweet spot; fluorite has the narrowest.',
     },
@@ -663,6 +676,7 @@ const I18N = {
     upCover: t => `A tourmaline takes ${t} s to dust over`, wipeBtn: 'Dust it',
     upHeatOff: 'Heat tanzanite to a few hundred °C to drive off the yellow-green: that direction turns blue-violet.', upHeatOn: 'Ready. Tanzanite’s yellow-green direction is now blue-violet.',
     tzName: ['Blue tanzanite', 'Violet tanzanite', 'Yellow-green tanzanite', 'Blue-violet tanzanite'], tzColor: ['blue', 'violet', 'yellow-green', 'blue-violet'], tzMore: ' · 40% more grinding',
+    litDay: 'Daylight', litCandle: 'Candlelight', litRate: v => ` · ${v}/s`,
     hOrient: c => `The tanzanite is turning: ${c} take turns facing up. Tap when the colour you want is on top.`, tapOrient: 'Tap on your colour', tzPick: n => `Chosen: ${n}. Now set the angle.`,
     nudge: 'Spend your light here', nudgeOil: 'Stops emerald cracks', workshopSay: 'You can spend light in the Workshop. Upgrades make you chip and grind faster.',
     specs: (h, n, d) => `Hardness ${h} · RI ${n} · Dispersion ${d}`, specsQ: q => ` · Quality ×${q}`,
@@ -721,6 +735,11 @@ const GEMS = {
     pal: ['#2a0f4a', '#4d1f8a', '#7a3cc8', '#c39cff', '#f6eeff'],
     pals: [['#0b1350', '#1b2a9a', '#3a4fd6', '#8f9cff', '#eef0ff'], ['#2a0f4a', '#4d1f8a', '#7a3cc8', '#c39cff', '#f6eeff'], ['#3a3a12', '#6b6b22', '#a3a03a', '#d6d27a', '#fbf9e0'], ['#16124f', '#2f2a9e', '#5450d8', '#a6a2ff', '#f0efff']],
     rock: ['#5c5866', '#736e7e', '#8a8596'], caust: ['#8f9cff', '#c39cff'], ui: '#4b3cc8', swing: 14 },
+  // colour change: green palette in daylight, red in candlelight (follows the case's light switch)
+  alexandrite: { group: 'alexandrite', name: '变石', en: 'Alexandrite', f: 'BeAl₂O₄', mohs: 8.5, mohsTxt: '8.5', n: 1.75, disp: .015, maxF: 49, shape: 'round', mult: 80,
+    pal: ['#0d3b2a', '#1f6b4c', '#3a9a6e', '#8fd9b2', '#effff6'],
+    pals: [['#0d3b2a', '#1f6b4c', '#3a9a6e', '#8fd9b2', '#effff6'], ['#3a0a24', '#6e1840', '#a82c5e', '#e58ab0', '#fff0f6']],
+    rock: ['#5e6359', '#757a6f', '#8c9186'], caust: ['#8fd9b2', '#e58ab0'], ui: '#2f8a63', swing: 16 },
 };
 // opal has no facets; what the stone is worth depends on the play-of-color you crack open
 const OPAL = [
@@ -744,6 +763,7 @@ const SHOP = [
   { k: 'diamond', price: 7e5, buys: ['diamond'] },
   { k: 'tourmaline', price: 2e6, buys: ['tourmaline'], ch: 2 },
   { k: 'tanzanite', price: 1e7, buys: ['tanzanite'], ch: 2 },
+  { k: 'alexandrite', price: 2e7, buys: ['alexandrite'], ch: 2 },
 ];
 const UPS = [
   { k: 'tool', max: 30, cost: l => 20 * 2.2 ** l, show: () => true,
@@ -771,8 +791,8 @@ const OUTLINE = '#1c1922';
 const fresh = () => ({
   light: 0, total: 0, bench: null, cases: [], slots: 3,
   up: { tool: 0, wheel: 0, polish: 0, lamp: 0, oil: 0, dust: 0, cover: 0, heat: 0 },
-  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0, tourmaline: 0, tanzanite: 0 },
-  lastAngle: {}, seen: {}, ended: false, seed: 7, t: Date.now(),
+  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0, tourmaline: 0, tanzanite: 0, alexandrite: 0 },
+  lastAngle: {}, seen: {}, ended: false, lit: 'day', seed: 7, t: Date.now(),
   tut: { taps: 0, grinds: 0, placed: 0, upgraded: 0, said: 0 },
   unlocked: {},
 });
@@ -788,12 +808,16 @@ const crackChance = (l = S.up.oil) => 0.15 * 0.5 ** l;
 const dustTime = (l = S.up.cover) => 40 * 2 ** l;
 const facetNeed = b => GEMS[b.t].mohs ** 2 * 0.8 * (1 + 0.05 * b.facets) * (b.t === 'diamond' && !S.up.dust ? 5 : 1) * (GEMS[b.t].grindMul || 1) * (b.t === 'tanzanite' && b.v != null ? TZ[b.v].grind : 1);
 const rockHP = t => GEMS[t].mohs ** 2 * 1.2;
+// the light switch arrives with alexandrite: daylight favours green and blue stones, candlelight red ones and the fire of opal and diamond
+const LIT = { day: ['fluorite', 'emerald', 'sapphire', 'tourmaline', 'tanzanite'], candle: ['ruby', 'opal', 'diamond'] };
+const lightMul = g => !S.bought.alexandrite ? 1 : g.t === 'alexandrite' || LIT[S.lit || 'day'].includes(g.t) ? 1.3 : 1;
+function caseRateLit(m) { const k = S.lit; S.lit = m; const r = caseRate(); S.lit = k; return r; }
 const sapphireBonus = () => 1 + 0.08 * S.cases.filter(g => g.t === 'sapphire').length;
 function gemRate(g, inCase) {
   const G = GEMS[g.t];
   if (!g.facets) return 0;
   return 40 * fres0(G.n) * g.facets * (1 + 20 * G.disp) * (g.q || 1) * 1.25 ** S.up.polish
-    * (G.mult || 1) * (inCase ? 1.3 ** S.up.lamp * (1 - 0.6 * (g.dust || 0)) : 1) * (g.t === 'ruby' ? 1.3 : 1) * sapphireBonus();
+    * (G.mult || 1) * (inCase ? 1.3 ** S.up.lamp * (1 - 0.6 * (g.dust || 0)) * lightMul(g) : 1) * (g.t === 'ruby' ? 1.3 : 1) * sapphireBonus();
 }
 const caseRate = () => S.cases.reduce((a, g) => a + gemRate(g, true), 0);
 const benchRate = () => S.bench && (S.bench.stage === 'facet' || S.bench.stage === 'done') ? gemRate(S.bench, false) : 0;
@@ -907,6 +931,7 @@ const CUTS = {
   diamond: { k: 14, ring: RINGS.ellipse(1, 1), rings: [{ y: .4, s: .56 }, { y: .24, s: .84, rot: .5 }, { y: .04, s: 1 }, { y: -.46, s: .5, rot: .5 }], culet: -.98, pitch: 0.5 },
 };
 CUTS.sapphire = CUTS.ruby;
+CUTS.alexandrite = { k: 12, ring: RINGS.ellipse(1, 0.94), rings: [{ y: .38, s: .56 }, { y: .22, s: .85, rot: .5 }, { y: .03, s: 1 }, { y: -.42, s: .52, rot: .5 }], culet: -.9, pitch: 0.5 };
 CUTS.tanzanite = { k: 10, ring: RINGS.ellipse(1.08, 0.82), rings: [{ y: .36, s: .55 }, { y: .2, s: .86, rot: .5 }, { y: .02, s: 1 }, { y: -.4, s: .55, rot: .5 }], culet: -.82, pitch: 0.5 };
 CUTS.tourmaline = { k: 8, ring: RINGS.octagon(1.3, 0.62, 0.2), rings: [{ y: .4, s: .62 }, { y: .2, s: .86 }, { y: 0, s: 1 }, { y: -.34, s: .6 }], culet: -.56, pitch: 0.55 };
 CUTS.opal = { dome: true, pitch: 0.62 };
@@ -1014,7 +1039,7 @@ function shadeFacet(G, n, id, seed) {
 const palCache = {};
 function gemLook(g) {
   const G = GEMS[g.t]; if (!G.pals) return G;
-  const v = g.stage === 'orient' ? orientNow() : g.v ?? 1, k = g.t + v;
+  const v = g.t === 'alexandrite' ? (S.lit === 'candle' ? 1 : 0) : g.stage === 'orient' ? orientNow() : g.v ?? 1, k = g.t + v;
   return palCache[k] || (palCache[k] = { ...G, pal: G.pals[v] });
 }
 function renderGem(g, stage, reveal, yaw) {
@@ -1332,9 +1357,12 @@ function renderSide() {
   $('tabUps').classList.toggle('cue', upsCue && upsTurn);
   // dust waits while the workshop calls, from its tab or from an upgrade pulsing inside it
   dustTurn = upsTurn && !upsCue && !(tab === 'ups' && upsPick) && S.cases.some(g => (g.dust || 0) >= 0.5);
-  $('tabCase').classList.toggle('cue', dustTurn && tab !== 'case');
+  // after dust: the case's light switch, when flipping it would bring at least 5% more
+  const other = S.lit === 'candle' ? 'day' : 'candle';
+  lightTurn = upsTurn && !upsCue && !(tab === 'ups' && upsPick) && !dustTurn && S.bought.alexandrite > 0 && caseRateLit(other) > caseRate() * 1.05;
+  $('tabCase').classList.toggle('cue', (dustTurn || lightTurn) && tab !== 'case');
 }
-let dustTurn = false, dustShown = false;
+let dustTurn = false, dustShown = false, lightTurn = false;
 
 function fitBench() {
   const bench = $('bench'); bench.classList.remove('tight');
@@ -1441,11 +1469,11 @@ function bestOffer() {
     const price = priceOf(sh.k);
     sh.buys.forEach(t => opts.push({ t, price, name: sh.buys.length > 1 ? gn(t) : L().shop[sh.k].title, ok: S.light >= price }));
   }
-  // in chapter two a stone the player has never cut is the thing to save for, unless saving would take more than three minutes;
+  // in chapter two a stone the player has never cut is the thing to save for, unless saving would take more than a minute;
   // without this the bench keeps offering another copy of the last stone and the light never piles up.
   // Chapter one stays a loop of re-cutting the stones you have, which is what builds the first income
   const rate = totalRate(), novel = opts.filter(o => !S.bought[GEMS[o.t].group] && SHOP.find(s => s.k === GEMS[o.t].group).ch).sort((a, b) => a.price - b.price)[0];
-  if (novel && (novel.ok || (rate > 0 && (novel.price - S.light) / rate <= 180))) return novel;
+  if (novel && (novel.ok || (rate > 0 && (novel.price - S.light) / rate <= 60))) return novel;
   const can = opts.filter(o => o.ok);
   return can.length ? can[can.length - 1] : opts.sort((a, b) => a.price - b.price)[0] || null;
 }
@@ -1469,7 +1497,15 @@ function renderCase() {
   S.cases.forEach((g, i) => { const el = $('caseGrid').querySelector(`[data-r="${i}"]`); if (el) el.textContent = tr('slotRate', fmt(gemRate(g, true)), g.q.toFixed(2)); });
   // a dusty tourmaline offers its wipe button; it pulses only when the case holds the next step
   $('caseGrid').querySelectorAll('[data-wipe]').forEach(b => { const d = S.cases[+b.dataset.wipe]?.dust || 0; b.classList.toggle('off', d < 0.25); b.classList.toggle('pulse', dustTurn && d >= 0.5); });
-  const call = $('caseGrid').querySelector('.wipe.pulse');
+  const lights = $('lights');
+  lights.hidden = !S.bought.alexandrite;
+  $('caseSec').classList.toggle('candle', S.bought.alexandrite > 0 && S.lit === 'candle');
+  if (!lights.hidden) lights.querySelectorAll('button').forEach(b => {
+    const m = b.dataset.lit, on = (S.lit || 'day') === m;
+    b.textContent = tr(m === 'day' ? 'litDay' : 'litCandle') + tr('litRate', fmt(caseRateLit(m)));
+    b.setAttribute('aria-pressed', String(on)); b.classList.toggle('pulse', lightTurn && !on);
+  });
+  const call = $('caseGrid').querySelector('.wipe.pulse') || lights.querySelector('.pulse');
   if (call && tab === 'case' && !dustShown) { dustShown = true; call.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' }); }
   if (!call) dustShown = false;
 }
@@ -1641,7 +1677,7 @@ function ensureTut() {
 const isUnlocked = s => S.bought[s.k] > 0 || s.k === 'fluorite' || ((!s.ch || S.ended) && S.total >= s.price * 0.25);
 // saves from before this feature already know their stones; don't replay those unlocks
 function seedUnlocked() { S.unlocked = {}; SHOP.forEach(s => { if (isUnlocked(s)) S.unlocked[s.k] = 1; }); }
-const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond', tourmaline: 'tourmaline', tanzanite: 'tanzanite' };
+const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond', tourmaline: 'tourmaline', tanzanite: 'tanzanite', alexandrite: 'alexandrite' };
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 let unlockGem = null, unlockTimer = 0, unlockRow = null;
 function announceUnlock(k, row) {
@@ -1947,6 +1983,10 @@ benchCv.addEventListener('pointerdown', e => { e.preventDefault(); hitBench(); }
 benchCv.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); hitBench(); } });
 $('shop').addEventListener('click', e => { const b = e.target.closest('button[data-buy]'); if (b) buy(b.dataset.buy); });
 $('ups').addEventListener('click', e => { const b = e.target.closest('button[data-up]'); if (b) upgrade(b.dataset.up); });
+$('lights').addEventListener('click', e => {
+  const b = e.target.closest('[data-lit]'); if (!b || !live() || S.lit === b.dataset.lit) return;
+  S.lit = b.dataset.lit; sfx('clink', S.lit === 'candle' ? 0.8 : 1.3, 0.6); fact('lit'); renderAll();
+});
 $('caseGrid').addEventListener('click', e => { const b = e.target.closest('.slot')?.querySelector('button[data-wipe]:not(.off)'); if (b && live()) wipe(+b.dataset.wipe); });
 $('langBtn').addEventListener('click', () => {
   LANG = LANG === 'zh' ? 'en' : 'zh';
