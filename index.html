@@ -201,6 +201,7 @@ button.pulse { animation: pulse 1.3s cubic-bezier(.16, 1, .3, 1) infinite; }
 .gauge-tip.now { color: var(--accent); }
 #gaugeCv { width: 100%; height: 70px; display: block; cursor: pointer; touch-action: manipulation; }
 #angleCv { width: 100%; height: 250px; display: block; cursor: pointer; touch-action: manipulation; margin-top: 8px; }
+.angle.star details { display: none; }
 .angle summary { font-size: 13px; color: var(--muted); cursor: pointer; width: fit-content; margin-inline: auto; font-style: italic; list-style: none; display: flex; align-items: center; gap: 8px; }
 .angle summary::-webkit-details-marker { display: none; }
 .angle summary::before { content: ""; border-left: 6px solid var(--muted); border-block: 4px solid transparent; transition: transform .2s cubic-bezier(.16, 1, .3, 1); }
@@ -268,6 +269,14 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
 .ending p { margin: 0; }
 .ending .big { font-family: var(--f-num); font-size: 34px; }
 .ending .actions { justify-content: flex-start; }
+/* the dark room: deliberately black in both themes, the only light is the stone */
+.night { position: fixed; inset: 0; z-index: 30; background: #05060a; color: #d9cfc4; display: grid; place-items: center; align-content: center; gap: 18px; padding: 24px max(16px, env(safe-area-inset-left, 0px)); text-align: center; }
+.night canvas { width: min(64vw, 300px); aspect-ratio: 128 / 150; image-rendering: pixelated; filter: drop-shadow(0 0 18px rgba(255, 122, 61, .55)); }
+.night-text { max-width: 30em; display: flex; flex-direction: column; gap: 10px; align-items: center; animation: nightText 4s ease-out 2s both; }
+.night-text p { margin: 0; line-height: 1.7; }
+.night-text button { margin-top: 8px; color: #d9cfc4; border-color: #d9cfc4; background: transparent; min-height: 44px; padding: 6px 22px; }
+@keyframes nightText { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .night-text { animation: none; } }
 
 @media (max-width: 860px) {
   /* on a phone the callouts would push the angle scale off screen; it needs to sit right under the gem */
@@ -522,6 +531,10 @@ footer button { font-size: 12px; padding: 2px 8px; font-style: normal; }
       <div class="actions"><button id="endClose" class="primary" data-i18n="endClose">继续</button></div>
     </div>
   </div>
+  <div id="night" class="night" hidden>
+    <canvas id="nightCv" width="128" height="150" aria-hidden="true"></canvas>
+    <div class="night-text"><p id="nightA"></p><p id="nightB"></p><p id="nightC"></p><button id="nightOn"></button></div>
+  </div>
 </div>
 
 <script>
@@ -564,6 +577,8 @@ const I18N = {
       tourmaline: { title: '碧玺原石', sub: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄ · 硬度 7–7.5', desc: '33 个刻面。受热会带电、吸灰：放进展柜后射灯一照，它会慢慢蒙上灰变暗，点「擦灰」就亮回来。', buy: ['买一块'] },
       tanzanite: { title: '坦桑石原石', sub: 'Ca₂Al₃(SiO₄)(Si₂O₇)O(OH) · 硬度 6–7', desc: '41 个刻面。三色性：换个方向看，分别是深蓝、红紫、黄绿。敲开后它会慢慢转，想要的颜色朝上时点一下。深蓝最亮，但要多磨掉一些原石。', buy: ['买一块'] },
       alexandrite: { title: '变石原石', sub: 'BeAl₂O₄ · 硬度 8.5', desc: '49 个刻面。亚历山大变石：日光下是绿的，烛光下变成红的。买下后展柜多一个灯光开关：日光让绿和蓝的宝石更亮，烛光让红宝石、欧泊和钻石更亮；变石在两种光下都更亮。', buy: ['买一块'] },
+      starsapphire: { title: '星光蓝宝石原石', sub: 'Al₂O₃（含金红石针）· 硬度 9', desc: '不切刻面，磨成弧面。里面的金红石细针会把光反射成六道星线。开石后先把弧面摆正：星线的中心在左右漂，漂到正中间时点一下。烛光下星线更清楚。', buy: ['买一块'] },
+      bluediamond: { title: '蓝钻原石', sub: 'C（含硼）· 硬度 10', desc: '57 个刻面，和钻石一样定角、研磨。最后一块原石：切好放进展柜，再关灯看看。', buy: ['买一块'] },
     },
     free: '免费', shopBusy: '工作台空出来才能放下一块', locked: v => `累计收集 ${v} 光后出现`,
     facts: {
@@ -578,6 +593,8 @@ const I18N = {
       heat: '大多数蓝色坦桑石都加热过：加热到几百摄氏度，黄绿和褐色调就褪掉了，剩下蓝和紫。',
       alexandrite: '变石 1830 年前后在俄国乌拉尔山被发现，以未来的沙皇亚历山大二世命名。它里面的铬吸掉 570 纳米左右的黄绿光，只留下绿和红两个窗口：日光里绿光多，它就是绿的；烛光里红光多，它就变红。',
       lit: '换了光源，变石跟着变了色。石头本身没变，变的是照在它身上的光。',
+      starsapphire: '星光来自宝石里顺着三个方向排列、互成 60° 的金红石细针，它们把光反射成六道星线。宝石要磨成弧面，平放时星线在正中间才算切得好。纽约美国自然历史博物馆的「印度之星」有 563.35 克拉。',
+      bluediamond: '蓝钻的蓝来自硼，硼也让它能导电，所以它是半导体。这种 IIb 型钻石只占开采钻石的约 0.02%。',
       opal: '欧泊是含水的二氧化硅，里面堆着排列整齐的微小硅球。白光在硅球间衍射，才出现随角度变化的彩色斑块，这叫「变彩」。它是圆顶，底下没有尖角可以锁光，所以不用定角。',
       angle: '宝石底部的角度决定光能不能绕回来。角度对了，光在底部反射两次，再从顶上射出来，宝石就亮。钻石的好角度最宽，萤石最窄。',
     },
@@ -593,6 +610,12 @@ const I18N = {
     upCover: t => `碧玺积满灰要 ${t} 秒`, wipeBtn: '擦灰',
     upHeatOff: '把坦桑石加热到几百 °C，去掉黄绿色调：黄绿方向会变成蓝紫。', upHeatOn: '已备好。坦桑石的黄绿方向变成蓝紫。',
     tzName: ['深蓝坦桑石', '红紫坦桑石', '黄绿坦桑石', '蓝紫坦桑石'], tzColor: ['深蓝', '红紫', '黄绿', '蓝紫'], tzMore: ' · 多磨 40%',
+    hStar: '星线的中心在左右漂，漂到正中间时点一下', tapStar: '星线居中时点我', cvCentre: '正中',
+    hPolishStar: '点宝石抛光弧面。抛得越亮，星线越清楚。',
+    starLock: [p => `星线几乎正好在中间（${p}%）。`, p => `星线有点偏（${p}%）。`, p => `星线偏得厉害（${p}%）。下一块等它漂到中间再点。`],
+    finH: '最后一颗：蓝钻', finA: '它的蓝来自硼。用短波紫外线照过以后再关灯，这种钻石还会自己发光，这叫磷光。', finGo: '用紫外灯照一下，然后关灯',
+    nightA: '希望钻石（45.52 克拉）也是一颗这样的蓝钻：关灯以后，它的红色磷光最长能持续约一分钟。',
+    nightB: (v, n) => `从第一块萤石算起，你切了 ${n} 块原石，一共收集了 ${v} 光。`, nightC: '藏光，到这里结束。谢谢你玩到最后。', nightOn: '开灯',
     litDay: '日光', litCandle: '烛光', litRate: v => ` · 每秒 ${v}`,
     hOrient: c => `坦桑石在慢慢转，${c}轮流朝上。想要的颜色朝上时点它。`, tapOrient: '颜色对了点我', tzPick: n => `选好了：${n}。接下来定角。`,
     nudge: '光可以花在这里', nudgeOil: '能防祖母绿开裂', workshopSay: '攒下的光可以在「工坊」里花掉。升级以后敲得更快、磨得更快。',
@@ -647,6 +670,8 @@ const I18N = {
       tourmaline: { title: 'Tourmaline rough', sub: 'Na(Li,Al)₃Al₆(Si₆O₁₈)(BO₃)₃(OH)₄ · hardness 7–7.5', desc: '33 facets. Warm it and it takes on a charge and pulls in dust: under the case spotlight it slowly greys over and dims. Tap “Dust it” to bring it back.', buy: ['Buy one'] },
       tanzanite: { title: 'Tanzanite rough', sub: 'Ca₂Al₃(SiO₄)(Si₂O₇)O(OH) · hardness 6–7', desc: '41 facets. Trichroic: from different directions it looks deep blue, red-violet or yellow-green. Once it is open it slowly turns; tap when the colour you want faces up. Blue is brightest but costs more grinding.', buy: ['Buy one'] },
       alexandrite: { title: 'Alexandrite rough', sub: 'BeAl₂O₄ · hardness 8.5', desc: '49 facets. Green in daylight, red by candlelight. Buying one adds a light switch to the case: daylight favours green and blue gems, candlelight favours ruby, opal and diamond; alexandrite shines under both.', buy: ['Buy one'] },
+      starsapphire: { title: 'Star sapphire rough', sub: 'Al₂O₃ with rutile needles · hardness 9', desc: 'No facets: it is polished into a dome. Fine rutile needles inside reflect the light into a six-rayed star. Once it is open, set the dome straight: the star drifts from side to side, tap when it sits in the middle. The star is sharper by candlelight.', buy: ['Buy one'] },
+      bluediamond: { title: 'Blue diamond rough', sub: 'C with boron · hardness 10', desc: '57 facets, set and ground like a diamond. The last rough of all: cut it, put it in the case, then turn off the lights.', buy: ['Buy one'] },
     },
     free: 'Free', shopBusy: 'Clear the workbench first', locked: v => `Appears after you have gathered ${v} light`,
     facts: {
@@ -661,6 +686,8 @@ const I18N = {
       heat: 'Most blue tanzanite has been heated: a few hundred degrees Celsius drives off the yellow-green and brown, leaving blue and violet.',
       alexandrite: 'Alexandrite was found in Russia’s Ural Mountains around 1830 and named for the future Tsar Alexander II. Its chromium absorbs yellow-green light near 570 nm and leaves two windows, green and red: daylight is rich in green so it looks green, candlelight is rich in red so it turns red.',
       lit: 'New light, new colour. The stone has not changed; the light falling on it has.',
+      starsapphire: 'The star comes from fine rutile needles lying in three directions 60° apart, which reflect light into six rays. The stone must be a dome, and a good cut puts the star in the middle when it lies flat. The Star of India in New York’s American Museum of Natural History weighs 563.35 carats.',
+      bluediamond: 'A blue diamond owes its colour to boron, which also lets it conduct electricity: it is a semiconductor. These type IIb diamonds are about 0.02% of mined diamonds.',
       opal: 'Opal is silica with water in it, packed with tiny spheres in neat rows. White light diffracts between them, making patches of color that shift as the stone turns. This is called play-of-color. An opal is a dome with no point underneath to trap light, so there is no angle to set.',
       angle: 'The angle at the bottom of a gem decides whether light comes back. Get it right and light bounces twice inside, then shoots out the top and the gem shines. Diamond has the widest sweet spot; fluorite has the narrowest.',
     },
@@ -676,6 +703,12 @@ const I18N = {
     upCover: t => `A tourmaline takes ${t} s to dust over`, wipeBtn: 'Dust it',
     upHeatOff: 'Heat tanzanite to a few hundred °C to drive off the yellow-green: that direction turns blue-violet.', upHeatOn: 'Ready. Tanzanite’s yellow-green direction is now blue-violet.',
     tzName: ['Blue tanzanite', 'Violet tanzanite', 'Yellow-green tanzanite', 'Blue-violet tanzanite'], tzColor: ['blue', 'violet', 'yellow-green', 'blue-violet'], tzMore: ' · 40% more grinding',
+    hStar: 'The star drifts side to side. Tap when it sits in the middle', tapStar: 'Tap when it’s centred', cvCentre: 'centre',
+    hPolishStar: 'Tap the stone to polish the dome. The brighter the polish, the sharper the star.',
+    starLock: [p => `The star sits almost dead centre (${p}%).`, p => `The star is a little off centre (${p}%).`, p => `The star is well off centre (${p}%). Next time wait until it drifts to the middle.`],
+    finH: 'The last one: a blue diamond', finA: 'Its blue comes from boron. Shine short-wave ultraviolet on it, turn the lights off, and it keeps glowing on its own. This is phosphorescence.', finGo: 'Shine the UV lamp, then lights off',
+    nightA: 'The Hope Diamond (45.52 carats) is a blue diamond like this: with the lights off, its red phosphorescence can last up to about a minute.',
+    nightB: (v, n) => `Since your first fluorite you have cut ${n} rough stones and gathered ${v} light.`, nightC: 'That is the end of Stonelight. Thank you for playing to the last stone.', nightOn: 'Lights on',
     litDay: 'Daylight', litCandle: 'Candlelight', litRate: v => ` · ${v}/s`,
     hOrient: c => `The tanzanite is turning: ${c} take turns facing up. Tap when the colour you want is on top.`, tapOrient: 'Tap on your colour', tzPick: n => `Chosen: ${n}. Now set the angle.`,
     nudge: 'Spend your light here', nudgeOil: 'Stops emerald cracks', workshopSay: 'You can spend light in the Workshop. Upgrades make you chip and grind faster.',
@@ -740,6 +773,14 @@ const GEMS = {
     pal: ['#0d3b2a', '#1f6b4c', '#3a9a6e', '#8fd9b2', '#effff6'],
     pals: [['#0d3b2a', '#1f6b4c', '#3a9a6e', '#8fd9b2', '#effff6'], ['#3a0a24', '#6e1840', '#a82c5e', '#e58ab0', '#fff0f6']],
     rock: ['#5e6359', '#757a6f', '#8c9186'], caust: ['#8fd9b2', '#e58ab0'], ui: '#2f8a63', swing: 16 },
+  // asterism: a polished dome whose six-rayed star must be centred before polishing
+  starsapphire: { group: 'starsapphire', name: '星光蓝宝石', en: 'Star sapphire', f: 'Al₂O₃ + TiO₂', mohs: 9, mohsTxt: '9', n: 1.77, disp: .018, maxF: 12, cab: true, grindMul: 3, mult: 1000,
+    pal: ['#09154e', '#1a3399', '#3c67d8', '#93b3ff', '#e8efff'],
+    rock: ['#6b625e', '#827772', '#988d88'], caust: ['#93b3ff', '#e8efff'], ui: '#2c4fb8' },
+  // the last stone: a type IIb diamond, blue from boron, phosphorescent after UV (the ending)
+  bluediamond: { group: 'bluediamond', name: '蓝钻', en: 'Blue diamond', f: 'C · B', mohs: 10, mohsTxt: '10', n: 2.417, disp: .044, maxF: 57, shape: 'round', mult: 270,
+    pal: ['#0f2347', '#23457d', '#4a78b8', '#a9c6ef', '#f2f8ff'], fire: ['#ff6fae', '#ffd84d', '#5fe3ff', '#a77bff'],
+    rock: ['#787a83', '#8f929a', '#a7aab1'], caust: ['#6fb3ff', '#ffe066', '#a9c6ef'], ui: '#3a6fc0', swing: 22 },
 };
 // opal has no facets; what the stone is worth depends on the play-of-color you crack open
 const OPAL = [
@@ -764,6 +805,8 @@ const SHOP = [
   { k: 'tourmaline', price: 2e6, buys: ['tourmaline'], ch: 2 },
   { k: 'tanzanite', price: 1e7, buys: ['tanzanite'], ch: 2 },
   { k: 'alexandrite', price: 2e7, buys: ['alexandrite'], ch: 2 },
+  { k: 'starsapphire', price: 4e7, buys: ['starsapphire'], ch: 2 },
+  { k: 'bluediamond', price: 1.5e8, buys: ['bluediamond'], ch: 2 },
 ];
 const UPS = [
   { k: 'tool', max: 30, cost: l => 20 * 2.2 ** l, show: () => true,
@@ -791,8 +834,8 @@ const OUTLINE = '#1c1922';
 const fresh = () => ({
   light: 0, total: 0, bench: null, cases: [], slots: 3,
   up: { tool: 0, wheel: 0, polish: 0, lamp: 0, oil: 0, dust: 0, cover: 0, heat: 0 },
-  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0, tourmaline: 0, tanzanite: 0, alexandrite: 0 },
-  lastAngle: {}, seen: {}, ended: false, lit: 'day', seed: 7, t: Date.now(),
+  bought: { fluorite: 0, emerald: 0, corundum: 0, opal: 0, diamond: 0, tourmaline: 0, tanzanite: 0, alexandrite: 0, starsapphire: 0, bluediamond: 0 },
+  lastAngle: {}, seen: {}, ended: false, finale: false, lit: 'day', seed: 7, t: Date.now(),
   tut: { taps: 0, grinds: 0, placed: 0, upgraded: 0, said: 0 },
   unlocked: {},
 });
@@ -806,10 +849,11 @@ const grindClick = (l = S.up.tool) => 6 * 1.6 ** l;
 const autoGrind = (l = S.up.wheel) => l ? 3 * l * 1.4 ** l : 0;
 const crackChance = (l = S.up.oil) => 0.15 * 0.5 ** l;
 const dustTime = (l = S.up.cover) => 40 * 2 ** l;
-const facetNeed = b => GEMS[b.t].mohs ** 2 * 0.8 * (1 + 0.05 * b.facets) * (b.t === 'diamond' && !S.up.dust ? 5 : 1) * (GEMS[b.t].grindMul || 1) * (b.t === 'tanzanite' && b.v != null ? TZ[b.v].grind : 1);
+const facetNeed = b => GEMS[b.t].mohs ** 2 * 0.8 * (1 + 0.05 * b.facets) * ((b.t === 'diamond' || b.t === 'bluediamond') && !S.up.dust ? 5 : 1) * (GEMS[b.t].grindMul || 1) * (b.t === 'tanzanite' && b.v != null ? TZ[b.v].grind : 1);
 const rockHP = t => GEMS[t].mohs ** 2 * 1.2;
-// the light switch arrives with alexandrite: daylight favours green and blue stones, candlelight red ones and the fire of opal and diamond
-const LIT = { day: ['fluorite', 'emerald', 'sapphire', 'tourmaline', 'tanzanite'], candle: ['ruby', 'opal', 'diamond'] };
+// the light switch arrives with alexandrite: daylight favours green and blue stones, candlelight red ones, the fire of opal and diamond,
+// and the star sapphire, whose star is sharpest under a single point of light
+const LIT = { day: ['fluorite', 'emerald', 'sapphire', 'tourmaline', 'tanzanite'], candle: ['ruby', 'opal', 'diamond', 'starsapphire', 'bluediamond'] };
 const lightMul = g => !S.bought.alexandrite ? 1 : g.t === 'alexandrite' || LIT[S.lit || 'day'].includes(g.t) ? 1.3 : 1;
 function caseRateLit(m) { const k = S.lit; S.lit = m; const r = caseRate(); S.lit = k; return r; }
 const sapphireBonus = () => 1 + 0.08 * S.cases.filter(g => g.t === 'sapphire').length;
@@ -935,6 +979,8 @@ CUTS.alexandrite = { k: 12, ring: RINGS.ellipse(1, 0.94), rings: [{ y: .38, s: .
 CUTS.tanzanite = { k: 10, ring: RINGS.ellipse(1.08, 0.82), rings: [{ y: .36, s: .55 }, { y: .2, s: .86, rot: .5 }, { y: .02, s: 1 }, { y: -.4, s: .55, rot: .5 }], culet: -.82, pitch: 0.5 };
 CUTS.tourmaline = { k: 8, ring: RINGS.octagon(1.3, 0.62, 0.2), rings: [{ y: .4, s: .62 }, { y: .2, s: .86 }, { y: 0, s: 1 }, { y: -.34, s: .6 }], culet: -.56, pitch: 0.55 };
 CUTS.opal = { dome: true, pitch: 0.62 };
+CUTS.starsapphire = CUTS.opal;
+CUTS.bluediamond = CUTS.diamond;
 const meshCache = {};
 function getMesh(t) {
   if (meshCache[t]) return meshCache[t];
@@ -1037,14 +1083,18 @@ function shadeFacet(G, n, id, seed) {
   return { c: pal[Math.max(0, Math.min(3, Math.floor(L * 4)))], spec };
 }
 const palCache = {};
+const GLOW = { pal: ['#2a0800', '#6e1a00', '#c2410c', '#ff7a3d', '#ffd2a8'], fire: null, caust: ['#ff7a3d', '#c2410c'] };
 function gemLook(g) {
-  const G = GEMS[g.t]; if (!G.pals) return G;
+  const G = GEMS[g.t];
+  if (g.glow) return palCache.glow || (palCache.glow = { ...G, ...GLOW });
+  if (!G.pals) return G;
   const v = g.t === 'alexandrite' ? (S.lit === 'candle' ? 1 : 0) : g.stage === 'orient' ? orientNow() : g.v ?? 1, k = g.t + v;
   return palCache[k] || (palCache[k] = { ...G, pal: G.pals[v] });
 }
 function renderGem(g, stage, reveal, yaw) {
   const G = gemLook(g), M = getMesh(g.t);
   if (G.opal) return renderOpal(g, stage, reveal, yaw);
+  if (G.cab) return renderStar(g, stage, reveal, yaw);
   const cutN = stage === 'facet' || stage === 'done' ? g.facets : 0;
   const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(M.pitch), sp = Math.sin(M.pitch);
   const P = M.V.map(([x, y, z]) => {
@@ -1113,6 +1163,53 @@ function finishGem(g, G, stage, reveal) {
     }
   }
   gemCx.putImageData(gemImg, 0, 0);
+}
+// star sapphire: a smooth blue dome; three bright lines 60° apart cross at the star's centre, which sits off the top by the cutter's tilt
+function renderStar(g, stage, reveal, yaw) {
+  const G = GEMS[g.t], M = getMesh(g.t);
+  const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(M.pitch), sp = Math.sin(M.pitch);
+  const rot = ([x, y, z]) => { const x1 = x * cy + z * sy, z1 = -x * sy + z * cy; return [x1, y * cp - z1 * sp, y * sp + z1 * cp]; };
+  const P = M.V.map(rot), N = M.VN.map(rot);
+  const d = gemImg.data; d.fill(0); idBuf.fill(-1); cutBuf.fill(0);
+  const pal = G.pal.map(rgb), white = [255, 255, 255], ray = rgb(G.pal[4]);
+  const tilt = stage === 'star' ? starNeedle.x : g.tilt || 0;
+  const top = rot([tilt * 0.55, 0.62, 0]), sx = GCX + top[0] * GR, sy0 = GCY - top[1] * GR;
+  const shine = stage === 'star' ? 0.75 : stage === 'facet' || stage === 'done' ? 0.35 + 0.65 * g.facets / G.maxF : 0;
+  const a0 = yaw * 0.5;
+  for (const f of M.F) {
+    const [ia, ib, ic] = f.v, a = P[ia], b = P[ib], c = P[ic];
+    if (cross3(sub3(b, a), sub3(c, a))[2] <= 0.0001) continue;
+    const ax = GCX + a[0] * GR, ay = GCY - a[1] * GR, bx = GCX + b[0] * GR, by = GCY - b[1] * GR, qx = GCX + c[0] * GR, qy = GCY - c[1] * GR;
+    const area = (bx - ax) * (qy - ay) - (by - ay) * (qx - ax);
+    if (Math.abs(area) < 1e-6) continue;
+    const sg = area > 0 ? 1 : -1, A = Math.abs(area);
+    const x0 = Math.max(0, Math.floor(Math.min(ax, bx, qx))), x1 = Math.min(SW - 1, Math.ceil(Math.max(ax, bx, qx)));
+    const y0 = Math.max(0, Math.floor(Math.min(ay, by, qy))), y1 = Math.min(SH - 1, Math.ceil(Math.max(ay, by, qy)));
+    for (let py = y0; py <= y1; py++) for (let px = x0; px <= x1; px++) {
+      const X = px + .5, Y = py + .5;
+      const w0 = ((bx - X) * (qy - Y) - (by - Y) * (qx - X)) * sg / A;
+      const w1 = ((qx - X) * (ay - Y) - (qy - Y) * (ax - X)) * sg / A;
+      const w2 = ((ax - X) * (by - Y) - (ay - Y) * (bx - X)) * sg / A;
+      if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+      const n = norm3([0, 1, 2].map(i => N[ia][i] * w0 + N[ib][i] * w1 + N[ic][i] * w2));
+      const l = Math.max(0, dot3(n, LIGHT));
+      // a deep body with one small highlight, so the white star reads against it
+      let col = pal[l > .85 ? 3 : l > .45 ? 2 : l > .15 ? 1 : 0];
+      if (shine > 0) {
+        const dx = X - sx, dy = Y - sy0, rr = Math.hypot(dx, dy), fade = 1 - rr / (GR * 1.1);
+        if (rr < 3) col = white;
+        else if (shine * fade > 0.12) for (let k = 0; k < 3; k++) {
+          const th = a0 + k * Math.PI / 3;
+          if (Math.abs(dx * Math.sin(th) - dy * Math.cos(th)) < 0.6 + 0.5 * fade) { col = shine * fade > 0.4 ? white : ray; break; }
+        }
+      }
+      const o = py * SW + px;
+      idBuf[o] = 0;
+      d[o * 4] = col[0]; d[o * 4 + 1] = col[1]; d[o * 4 + 2] = col[2]; d[o * 4 + 3] = 255;
+    }
+  }
+  finishGem(g, G, stage, reveal);
+  return [];
 }
 const OPAL_FIRE = ['#ff4f6a', '#ff9a3c', '#ffe14d', '#5fe08a', '#3fd6e0', '#4f7dff', '#a35cff'].map(rgb);
 function renderOpal(g, stage, reveal, yaw) {
@@ -1207,7 +1304,7 @@ function drawScene(ctx, g, stage, reveal, time, particles) {
   const G = GEMS[g.t];
   ctx.clearRect(0, 0, 128, 150);
   const power = stage === 'facet' || stage === 'done' ? Math.min(1, g.facets / G.maxF * Math.min(1, (g.q || 1) / 1.6) + 0.08) : stage === 'angle' ? angleGlow * 0.9 : 0;
-  drawCaustic(ctx, G, power, time, 72, 132);
+  if (!g.glow) drawCaustic(ctx, G, power, time, 72, 132);
   const bob = reduced ? 0 : Math.round(Math.sin(time * 1.6 + g.seed) * 1.2);
   // finished gems spin on their own; unfinished ones sway a little so they still read as 3D
   const base = (g.seed % 628) / 100;
@@ -1312,7 +1409,7 @@ function renderSide() {
   // the workshop's turn: a stone is being chipped or ground, or the bench is empty and no stone is affordable yet.
   // A finished gem, the angle step, an offer on the bench or the oil button under a cracking emerald come first
   const offer = busy ? null : bestOffer();
-  const upsTurn = busy ? S.bench.stage !== 'done' && S.bench.stage !== 'angle' && S.bench.stage !== 'orient' && !document.querySelector('#oilBtn.pulse') : !(offer && offer.ok);
+  const upsTurn = busy ? S.bench.stage !== 'done' && S.bench.stage !== 'angle' && S.bench.stage !== 'orient' && S.bench.stage !== 'star' && !document.querySelector('#oilBtn.pulse') : !(offer && offer.ok);
   const nudgeKey = S.tut.placed && !S.tut.upgraded
     ? (UPS.find(u => (u.show() || upLevel(u.k) > 0) && upLevel(u.k) < u.max && S.light >= u.cost(upLevel(u.k))) || {}).k : null;
   if (nudgeKey && !S.tut.said) { S.tut.said = 1; say(tr('workshopSay')); }
@@ -1400,12 +1497,13 @@ function renderBench() {
   if (cracking) { $('tapTip').hidden = false; $('tapTip').textContent = tr('crackTip'); }
   const showTap = !cracking && b && !S.tut.placed && ((b.stage === 'rock' && S.tut.taps < 3) || (b.stage === 'facet' && S.tut.grinds < 4));
   // the angle step changes what a tap means, so the stone says when to tap; a finished gem can still be tapped to put it away
-  const showAngle = !cracking && b && (b.stage === 'angle' || b.stage === 'orient');
+  const showAngle = !cracking && b && (b.stage === 'angle' || b.stage === 'orient' || b.stage === 'star');
   if (!cracking) $('tapTip').hidden = !(showTap || showAngle);
-  if (showTap || showAngle) $('tapTip').textContent = tr(showAngle ? (b.stage === 'orient' ? 'tapOrient' : 'tapAngle') : b.stage === 'rock' ? 'tapRock' : 'tapGrind');
-  $('anglePanel').hidden = !b || b.stage !== 'angle';
+  if (showTap || showAngle) $('tapTip').textContent = tr(showAngle ? (b.stage === 'orient' ? 'tapOrient' : b.stage === 'star' ? 'tapStar' : 'tapAngle') : b.stage === 'rock' ? 'tapRock' : 'tapGrind');
+  $('anglePanel').hidden = !b || (b.stage !== 'angle' && b.stage !== 'star');
+  $('anglePanel').classList.toggle('star', !!b && b.stage === 'star');
   const bar = $('barWrap'), fill = $('barFill'), txt = $('barText'), hint = $('hint');
-  bar.hidden = !b || b.stage === 'angle' || b.stage === 'orient';
+  bar.hidden = !b || b.stage === 'angle' || b.stage === 'orient' || b.stage === 'star';
   let actions = '';
   if (!b) {
     hint.textContent = tr('hEmpty'); txt.textContent = ''; bar.hidden = true;
@@ -1415,6 +1513,8 @@ function renderBench() {
     hint.textContent = tr('hRock');
     fill.style.width = (100 * (1 - b.hp / b.hpMax)) + '%';
     txt.textContent = tr('rockBar', Math.max(0, Math.ceil(b.hp)), Math.ceil(b.hpMax));
+  } else if (b.stage === 'star') {
+    hint.textContent = ''; txt.textContent = '';
   } else if (b.stage === 'orient') {
     // the key under the turning stone: each colour and what it is worth, the one facing up now underlined
     const seq = orientSeq(), now = orientNow(), colors = L().tzColor;
@@ -1425,7 +1525,7 @@ function renderBench() {
     txt.textContent = '';
   } else if (b.stage === 'facet') {
     const need = facetNeed(b);
-    hint.textContent = tr(G.opal ? 'hPolish' : 'hGrind') + tr('hRate', fmt(gemRate(b)));
+    hint.textContent = tr(G.cab ? 'hPolishStar' : G.opal ? 'hPolish' : 'hGrind') + tr('hRate', fmt(gemRate(b)));
     if (b.t === 'emerald' && S.up.oil < 4) {
       // the fix for cracking sits right under the stone, not only in the workshop
       const l = S.up.oil, c = UPS.find(u => u.k === 'oil').cost(l), pct = v => (v * 100).toFixed(v < 0.1 ? 1 : 0) + '%';
@@ -1433,11 +1533,11 @@ function renderBench() {
       actions = `<button id="oilBtn" class="${S.tut.cracked && !l ? 'pulse' : ''}"${S.light < c ? ' disabled' : ''}>${tr('oilBtn', pct(crackChance(l)), pct(crackChance(l + 1)))}<b>${fmt(c)}</b></button>`;
     }
     fill.style.width = (100 * b.prog / need) + '%';
-    txt.textContent = tr(G.opal ? 'barPolish' : 'barFacet', b.facets, G.maxF) + tr(G.opal ? 'barThisPass' : 'barThisFacet', fmt(b.prog), fmt(need));
+    txt.textContent = tr(G.opal || G.cab ? 'barPolish' : 'barFacet', b.facets, G.maxF) + tr(G.opal || G.cab ? 'barThisPass' : 'barThisFacet', fmt(b.prog), fmt(need));
   } else {
     fill.style.width = '100%';
     const r = gemRate(b, true);
-    txt.textContent = tr(G.opal ? 'barPolish' : 'barFacet', G.maxF, G.maxF);
+    txt.textContent = tr(G.opal || G.cab ? 'barPolish' : 'barFacet', G.maxF, G.maxF);
     let label = tr('place'), note = tr('placeNote', fmt(r));
     // say what a full case does before it is full, so nobody fears losing a finished gem
     if (S.cases.length === S.slots - 1) note = tr('lastSlot');
@@ -1631,6 +1731,45 @@ function drawAngle() {
   c.fillStyle = muted; c.fillText(A_MIN + '°', gx0, gy + 32); c.textAlign = 'right'; c.fillText(A_MAX + '°', gx1, gy + 32); c.textAlign = 'left';
   return res.score;
 }
+// star step: the star's centre drifts across the dome; tapping when it is in the middle sets the quality
+const starNeedle = { x: -1, dir: 1, lockedAt: 0 };
+function swingStar(dt) {
+  const b = S.bench; if (!b || b.stage !== 'star') return;
+  starNeedle.x += starNeedle.dir * 0.55 * dt;
+  if (starNeedle.x > 1) { starNeedle.x = 2 - starNeedle.x; starNeedle.dir = -1; }
+  if (starNeedle.x < -1) { starNeedle.x = -2 - starNeedle.x; starNeedle.dir = 1; }
+  drawStarGauge(GEMS[b.t], starNeedle.x);
+  const now = starScore(starNeedle.x) > 0.7, tip = $('gaugeTip');
+  if (tip.classList.contains('now') !== now) { tip.classList.toggle('now', now); tip.textContent = tr(now ? 'gaugeNow' : 'hStar'); }
+}
+const starScore = x => Math.max(0, 1 - Math.abs(x) / 0.4);
+function drawStarGauge(G, x) {
+  const cv = $('gaugeCv'), dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w) return;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+  const cs = getComputedStyle(document.documentElement), ink = cs.getPropertyValue('--ink').trim();
+  const x0 = 14, x1 = w - 14, base = 44, GX = v => x0 + (v + 1) / 2 * (x1 - x0);
+  c.fillStyle = G.ui;
+  for (let v = -1; v < 1; v += 0.01) { const s2 = starScore(v + 0.005); if (s2 < 0.12) continue; c.globalAlpha = Math.min(0.85, s2 * 0.85); c.fillRect(GX(v), base - 12, GX(v + 0.01) - GX(v) + 0.6, 12); }
+  c.globalAlpha = 1; c.strokeStyle = ink; c.lineWidth = 1; c.beginPath(); c.moveTo(x0, base + .5); c.lineTo(x1, base + .5);
+  for (let v = -1; v <= 1.001; v += 0.1) { const xx = Math.round(GX(v)) + .5; c.moveTo(xx, base); c.lineTo(xx, base + (Math.abs(v) < 0.01 ? 9 : 3)); }
+  c.stroke();
+  c.fillStyle = ink; c.font = '12px ' + cs.getPropertyValue('--f-body'); c.textAlign = 'center';
+  c.fillText(tr('cvCentre'), GX(0), base - 30);
+  const xx = GX(x);
+  c.lineWidth = 1.5; c.beginPath(); c.moveTo(xx, base - 14); c.lineTo(xx, base + 8); c.stroke();
+  c.beginPath(); c.moveTo(xx, base - 13); c.lineTo(xx - 4, base - 21); c.lineTo(xx + 4, base - 21); c.closePath(); c.fill();
+  c.textAlign = 'left';
+}
+function lockStar() {
+  const b = S.bench; if (!b || b.stage !== 'star' || performance.now() - starNeedle.lockedAt < 1200) return;
+  const sc = starScore(starNeedle.x);
+  b.tilt = starNeedle.x; b.q = qualityOf(sc); b.stage = 'facet'; b.prog = 0;
+  if (sc > 0.85) { sfx('clink', 1.5, 0.9); sfx('ping', 2, 0.6, 0.08); } else if (sc > 0.5) sfx('clink', 1, 0.7); else sfx('chip', 0.6, 0.8);
+  say(L().starLock[sc > 0.85 ? 0 : sc > 0.5 ? 1 : 2](Math.round(sc * 100)));
+  renderBench();
+}
 function lockAngle() {
   const b = S.bench; if (!b || b.stage !== 'angle') return;
   if (performance.now() - needle.lockedAt < 1200) return;
@@ -1677,7 +1816,7 @@ function ensureTut() {
 const isUnlocked = s => S.bought[s.k] > 0 || s.k === 'fluorite' || ((!s.ch || S.ended) && S.total >= s.price * 0.25);
 // saves from before this feature already know their stones; don't replay those unlocks
 function seedUnlocked() { S.unlocked = {}; SHOP.forEach(s => { if (isUnlocked(s)) S.unlocked[s.k] = 1; }); }
-const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond', tourmaline: 'tourmaline', tanzanite: 'tanzanite', alexandrite: 'alexandrite' };
+const GROUP_GEM = { fluorite: 'fluorite', emerald: 'emerald', corundum: 'ruby', opal: 'opal', diamond: 'diamond', tourmaline: 'tourmaline', tanzanite: 'tanzanite', alexandrite: 'alexandrite', starsapphire: 'starsapphire', bluediamond: 'bluediamond' };
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
 let unlockGem = null, unlockTimer = 0, unlockRow = null;
 function announceUnlock(k, row) {
@@ -1727,7 +1866,7 @@ function place() {
   const b = S.bench; if (!b || b.stage !== 'done') return;
   calmUntil = performance.now() + 800;
   S.tut.placed = 1;
-  const g = { t: b.t, seed: b.seed, facets: b.facets, q: b.q, v: b.v };
+  const g = { t: b.t, seed: b.seed, facets: b.facets, q: b.q, v: b.v, tilt: b.tilt };
   const r = gemRate(g, true);
   let slot;
   if (S.cases.length < S.slots) { S.cases.push(g); slot = S.cases.length - 1; }
@@ -1739,10 +1878,32 @@ function place() {
   sfx('clink', 0.8, 0.9);
   S.bench = null;
   if (g.t === 'diamond' && !S.ended) { S.ended = true; showEnding(g); }
+  else if (g.t === 'bluediamond' && !S.finale) { S.finale = true; showFinale(g); }
   renderAll();
   followToSlot(slot);
 }
+// the last stone: a card offers the UV lamp, then the room goes dark and the blue diamond glows red-orange, fading over a minute
+let endMode = 'chapter', nightGem = null, nightAt = 0;
+function showFinale(g) {
+  endMode = 'finale'; nightGem = { ...g, glow: true };
+  $('ending').querySelector('h2').textContent = tr('finH');
+  $('endA').textContent = tr('finA'); $('endB').textContent = ''; $('endC').textContent = '';
+  $('ending').querySelector('.row-desc').textContent = '';
+  $('endClose').textContent = tr('finGo');
+  $('ending').hidden = false;
+  [0, 2, 4, 7].forEach((s, i) => sfx('clink', 0.8 * penta(s), 0.7, 0.3 + i * 0.14));
+}
+function lightsOff() {
+  $('ending').hidden = true; endMode = 'chapter';
+  $('nightA').textContent = tr('nightA');
+  $('nightB').textContent = tr('nightB', fmt(S.total), Object.values(S.bought).reduce((a, n) => a + n, 0));
+  $('nightC').textContent = tr('nightC'); $('nightOn').textContent = tr('nightOn');
+  $('night').hidden = false; nightAt = performance.now();
+  [9, 7, 4, 2, 0].forEach((s, i) => sfx('ping', 0.6 * penta(s), 0.5, 0.8 + i * 0.5));
+}
 function showEnding(g) {
+  endMode = 'chapter';
+  $('ending').querySelector('h2').textContent = tr('endH'); $('ending').querySelector('.row-desc').textContent = tr('endNote'); $('endClose').textContent = tr('endClose');
   const res = trace(GEMS.diamond.n, S.lastAngle.diamond || 40.75);
   $('endA').textContent = tr('endA', Math.round(res.score * 100));
   $('endB').textContent = tr('endB', fmt(gemRate(g, true)));
@@ -1796,6 +1957,9 @@ function hitBench() {
   } else if (b.stage === 'orient') {
     lockOrient();
     return;
+  } else if (b.stage === 'star') {
+    lockStar();
+    return;
   } else if (b.stage === 'done') {
     place(); return;
   } else if (b.stage === 'facet') {
@@ -1825,10 +1989,12 @@ function breakRock(tapped) {
   b.hp = 0;
   sfx('smash', 1, 0.9); sfx('clink', 0.6, 0.5, 0.15);
   if (b.t === 'tanzanite' && b.v == null) { b.stage = 'orient'; orientGrace = performance.now() + 1000; renderBench(); return; }
+  if (GEMS[b.t].cab) { $('gaugeTip').classList.remove('now'); $('gaugeTip').textContent = tr('hStar'); b.stage = 'star'; starNeedle.x = -1; starNeedle.dir = 1; starNeedle.lockedAt = performance.now(); renderBench(); bringAngleIntoView(tapped); return; }
   toAngle(tapped);
 }
 function toAngle(tapped) {
   const b = S.bench; b.stage = 'angle';
+  $('gaugeTip').classList.remove('now'); $('gaugeTip').textContent = tr('gaugeIdle');
   needle.th = A_MIN; needle.dir = 1; needle.lockedAt = performance.now();
   fact('angle');
   renderBench(); drawAngle();
@@ -1907,7 +2073,7 @@ function step(now) {
   if (!live()) { try { snd.ctx && snd.ctx.close(); } catch (e) {} return; }
   const dt = Math.min(5, (now - last) / 1000); last = now; frame++;
   simulate(dt);
-  swingNeedle(Math.min(dt, 0.05));
+  swingNeedle(Math.min(dt, 0.05)); swingStar(Math.min(dt, 0.05));
   const time = now / 1000;
   if (frame % 60 === 1) readTheme();
   particles = particles.filter(p => (p.life -= dt) > 0);
@@ -1916,6 +2082,12 @@ function step(now) {
   if (b) drawScene(benchCx, b, b.stage, b.stage === 'rock' ? 1 - b.hp / b.hpMax : 1, time, particles);
   else { benchCx.clearRect(0, 0, 128, 150); }
   if (unlockGem && !$('unlock').hidden) drawScene($('unlockCv').getContext('2d'), unlockGem, 'done', 1, time);
+  if (nightGem && !$('night').hidden) {
+    // phosphorescence fades over about a minute, like the Hope Diamond's
+    const k = Math.max(0, 1 - (now - nightAt) / 60000);
+    drawScene($('nightCv').getContext('2d'), nightGem, 'done', 1, time);
+    $('nightCv').style.opacity = (0.08 + 0.92 * k * k).toFixed(3);
+  }
   if (frame % 3 === 0) {
     $('caseGrid').querySelectorAll('canvas').forEach(cv => {
       const g = S.cases[+cv.dataset.i]; if (g) drawScene(cv.getContext('2d'), g, 'done', 1, time + g.seed % 10);
@@ -1999,7 +2171,7 @@ function applyLang() {
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = tr(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', tr(el.dataset.i18nAria)));
   $('langBtn').textContent = tr('langBtn');
-  $('gaugeTip').textContent = tr($('gaugeTip').classList.contains('now') ? 'gaugeNow' : 'gaugeIdle');
+  $('gaugeTip').textContent = tr($('gaugeTip').classList.contains('now') ? 'gaugeNow' : S.bench?.stage === 'star' ? 'hStar' : 'gaugeIdle');
   buildShop(); caseKey = ''; $('benchActions').dataset.html = '';
   renderSoundBtn(); renderAll(); drawAngle();
 }
@@ -2008,14 +2180,14 @@ $('unlockGo').addEventListener('click', () => {
   if (SHELL.matches) setTab('shop', true);
   if (unlockRow) unlockRow.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' });
 });
-$('gaugeCv').addEventListener('pointerdown', e => { e.preventDefault(); lockAngle(); });
+$('gaugeCv').addEventListener('pointerdown', e => { e.preventDefault(); lockAngle(); lockStar(); });
 $('angleMore').addEventListener('toggle', drawAngle);
 angleCv.addEventListener('pointerdown', e => { e.preventDefault(); lockAngle(); });
 addEventListener('keydown', e => {
   if (!live()) return;
-  if (e.key !== ' ' || !S.bench || S.bench.stage !== 'angle') return;
+  if (e.key !== ' ' || !S.bench || !['angle', 'orient', 'star'].includes(S.bench.stage)) return;
   if (e.target.closest && e.target.closest('button, input')) return;
-  e.preventDefault(); lockAngle();
+  e.preventDefault(); lockAngle(); lockOrient(); lockStar();
 });
 $('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b && live()) setTab(b.dataset.tab, true); });
 ['shop', 'ups'].forEach(id => $(id).addEventListener('click', e => {
@@ -2025,7 +2197,8 @@ $('tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab
 $('ticker').addEventListener('click', () => { if (live() && SHELL.matches) $('ticker').classList.toggle('open'); });
 addEventListener('resize', () => { if (live()) fitShell(); });
 SHELL.addEventListener('change', () => { if (live()) { fitShell(); renderAll(); drawAngle(); } });
-$('endClose').addEventListener('click', () => { $('ending').hidden = true; });
+$('endClose').addEventListener('click', () => { if (endMode === 'finale') lightsOff(); else $('ending').hidden = true; });
+$('nightOn').addEventListener('click', () => { $('night').hidden = true; nightGem = null; });
 $('resetBtn').addEventListener('click', () => { $('resetConfirm').hidden = false; $('resetBtn').hidden = true; });
 $('resetNo').addEventListener('click', () => { $('resetConfirm').hidden = true; $('resetBtn').hidden = false; });
 $('resetYes').addEventListener('click', () => {
